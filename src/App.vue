@@ -57,7 +57,7 @@
               class="flex flex-1 justify-center items-center gap-1 text-[10px] uppercase font-bold py-1.5 rounded border cursor-pointer select-none transition"
               :class="getFilterClass(status)">
               <input type="checkbox" v-model="filters" :value="status" class="hidden">
-              {{ status.substring(0, 3) }}
+              {{ status }}
             </label>
           </div>
           <div class="relative group">
@@ -117,8 +117,7 @@
                 <span class="font-mono text-xs md:text-sm font-semibold text-gray-700 truncate" :title="file.name">{{
                   file.name }}</span>
                 <span :class="getStatusBadge(file.status)"
-                  class="text-[9px] font-bold px-1.5 rounded border uppercase shrink-0">{{ file.status.substring(0, 3)
-                  }}</span>
+                  class="text-[9px] font-bold px-1.5 rounded border uppercase shrink-0">{{ file.status }}</span>
               </div>
             </div>
 
