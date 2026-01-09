@@ -9,8 +9,8 @@
 
         <div class="flex items-center gap-2">
           <GitCompare class="text-blue-400 w-5 h-5 hidden sm:block" />
-          <h1 class="font-bold text-base leading-none">Simple Git Patch Viewer <span
-              class="text-[10px] font-normal text-gray-400 bg-gray-800 px-1 py-0.5 rounded">v0.0.1</span></h1>
+          <h1 class="font-bold text-base leading-none">{{ appTitle }} <span
+              class="text-[10px] font-normal text-gray-400 bg-gray-800 px-1 py-0.5 rounded">{{ appVersion }}</span></h1>
         </div>
       </div>
 
@@ -194,6 +194,9 @@ import { ref, computed, nextTick } from 'vue';
 import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight } from 'lucide-vue-next';
 import FileTree from './components/FileTree.vue';
 import { parsePatch } from './utils/patchParser.js';
+
+const appTitle = import.meta.env.VITE_APP_TITLE;
+const appVersion = import.meta.env.VITE_APP_VERSION;
 
 const rawInput = ref('');
 const files = ref([]);
