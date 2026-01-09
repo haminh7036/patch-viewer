@@ -2,8 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Patch Viewer Ultimate (Tree & Split View)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simple Git Patch Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -11,160 +11,201 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
         
-        :root { --diff-add-bg: #d1fae5; --diff-add-text: #065f46; --diff-del-bg: #fee2e2; --diff-del-text: #991b1b; }
+        /* Variables */
+        :root { 
+            --bg-add: #e6ffec; --bg-add-dark: #acf2bd; --text-add: #1f883d;
+            --bg-del: #ffebe9; --bg-del-dark: #ffdce0; --text-del: #cf222e;
+            --border-color: #d0d7de;
+        }
+
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-        .code-font { font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; font-size: 12px; line-height: 1.5; }
         
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f8f9fa; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        /* Typography */
+        .code-font { 
+            font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; 
+            font-size: 12px; 
+            line-height: 20px; 
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Loader */
-        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+        .spinner { border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 2px solid #fff; width: 14px; height: 14px; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Tree Lines */
-        .tree-line { border-left: 1px dashed #cbd5e1; }
+        /* Mobile Sidebar Transition */
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        
+        /* Empty Cell Pattern for Split View */
+        .empty-cell {
+            background-image: linear-gradient(45deg, #f8f9fa 25%, transparent 25%, transparent 75%, #f8f9fa 75%, #f8f9fa), linear-gradient(45deg, #f8f9fa 25%, transparent 25%, transparent 75%, #f8f9fa 75%, #f8f9fa);
+            background-size: 10px 10px;
+            background-position: 0 0, 5px 5px;
+            background-color: #ffffff;
+        }
     </style>
 </head>
 <body class="bg-gray-100 h-screen flex flex-col overflow-hidden text-gray-800">
 
 <div id="app" class="flex flex-col h-full" @dragover.prevent @drop.prevent="handleDrop">
 
-    <header class="bg-gray-900 text-white px-4 py-3 shadow-md flex justify-between items-center z-20 shrink-0">
+    <header class="bg-gray-900 text-white px-3 py-2 shadow-md flex justify-between items-center z-30 shrink-0 h-14">
         <div class="flex items-center gap-3">
-            <i data-lucide="git-merge" class="text-blue-400 w-6 h-6"></i>
-            <div>
-                <h1 class="font-bold text-lg leading-none">Patch Viewer <span class="text-xs font-normal text-gray-400">v0.0.1</span></h1>
+            <button @click="toggleSidebar" class="md:hidden p-1 rounded hover:bg-gray-700">
+                <i data-lucide="menu" class="w-5 h-5 text-gray-300"></i>
+            </button>
+            
+            <div class="flex items-center gap-2">
+                <i data-lucide="git-compare" class="text-blue-400 w-5 h-5 hidden sm:block"></i>
+                <h1 class="font-bold text-base leading-none">Simple Git Patch Viewer <span class="text-[10px] font-normal text-gray-400 bg-gray-800 px-1 py-0.5 rounded">v0.0.1</span></h1>
             </div>
         </div>
 
-        <div class="flex items-center gap-4">
-            <div v-if="isLoading" class="flex items-center gap-2 bg-blue-600/30 px-3 py-1 rounded text-xs text-blue-200 animate-pulse">
+        <div class="flex items-center gap-2 sm:gap-4">
+            <div v-if="isLoading" class="flex items-center gap-2 bg-blue-600/30 px-2 py-1 rounded text-[10px] text-blue-200">
                 <div class="spinner"></div>
-                <span>{{ loadingText }}</span>
+                <span class="hidden sm:inline">{{ loadingText }}</span>
             </div>
 
-            <div class="flex bg-gray-800 rounded p-1 border border-gray-700">
-                <button @click="viewMode = 'unified'" :class="{'bg-gray-600 text-white': viewMode === 'unified', 'text-gray-400 hover:text-gray-200': viewMode !== 'unified'}" class="px-3 py-1 text-xs rounded transition flex items-center gap-1">
-                    <i data-lucide="align-justify" class="w-3 h-3"></i> Unified
+            <div class="flex bg-gray-800 rounded p-0.5 border border-gray-700">
+                <button @click="viewMode = 'unified'" :class="viewMode === 'unified' ? 'bg-gray-600 text-white' : 'text-gray-400'" class="p-1.5 rounded transition" title="Unified View">
+                    <i data-lucide="align-justify" class="w-4 h-4"></i>
                 </button>
-                <button @click="viewMode = 'split'" :class="{'bg-gray-600 text-white': viewMode === 'split', 'text-gray-400 hover:text-gray-200': viewMode !== 'split'}" class="px-3 py-1 text-xs rounded transition flex items-center gap-1">
-                    <i data-lucide="columns" class="w-3 h-3"></i> Side-by-Side
+                <button @click="viewMode = 'split'" :class="viewMode === 'split' ? 'bg-gray-600 text-white' : 'text-gray-400'" class="p-1.5 rounded transition" title="Split View">
+                    <i data-lucide="columns" class="w-4 h-4"></i>
                 </button>
             </div>
 
-            <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-4 py-2 rounded transition shadow flex items-center gap-2">
-                <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Patch
+            <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded transition shadow flex items-center gap-1.5">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i> 
+                <span class="hidden sm:inline">Upload</span>
                 <input type="file" @change="handleFileUpload" accept=".patch,.diff,.txt" class="hidden">
             </label>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 overflow-hidden relative">
         
-        <div class="w-1/4 min-w-[300px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10">
+        <div v-if="showSidebar" @click="showSidebar = false" class="fixed inset-0 bg-black/50 z-20 md:hidden"></div>
+
+        <div :class="[
+            'absolute md:static top-0 bottom-0 left-0 w-3/4 max-w-[300px] md:w-1/4 md:min-w-[250px] bg-white border-r border-gray-200 flex flex-col z-20 shadow-xl md:shadow-none sidebar-transition transform',
+            showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        ]">
             
             <div class="p-3 border-b border-gray-100 bg-gray-50 flex flex-col gap-3">
-                <div class="flex gap-2">
+                <div class="flex gap-1 justify-between">
                     <label v-for="status in ['added', 'modified', 'deleted']" :key="status" 
-                        class="flex items-center gap-1.5 text-[10px] uppercase font-bold px-2 py-1 rounded border cursor-pointer select-none transition"
+                        class="flex flex-1 justify-center items-center gap-1 text-[10px] uppercase font-bold py-1.5 rounded border cursor-pointer select-none transition"
                         :class="getFilterClass(status)">
                         <input type="checkbox" v-model="filters" :value="status" class="hidden">
-                        <span class="w-2 h-2 rounded-full" :class="getStatusDotColor(status)"></span>
-                        {{ status }}
+                        {{ status.substring(0,3) }}
                     </label>
                 </div>
                 <div class="relative group">
-                    <input v-model="searchInput" @input="debouncedSearch" type="text" placeholder="Tìm file (ví dụ: src/components...)" 
-                        class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    <i data-lucide="search" class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 group-focus-within:text-blue-500"></i>
-                    <i v-if="isSearching" data-lucide="loader-2" class="w-3.5 h-3.5 text-blue-500 absolute right-2.5 top-2.5 animate-spin"></i>
+                    <input v-model="searchInput" @input="debouncedSearch" type="text" placeholder="Tìm file..." 
+                        class="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded bg-white focus:ring-1 focus:ring-blue-500 outline-none">
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2"></i>
                 </div>
             </div>
 
             <div class="flex-1 overflow-y-auto p-2">
                 <div v-if="files.length === 0" class="text-center text-gray-400 text-xs mt-10">
-                    Không có file nào
+                    Chưa có file
                 </div>
-                <file-tree :nodes="fileTree" :depth="0" @select-file="scrollToFile"></file-tree>
+                <file-tree :nodes="fileTree" :depth="0" @select-file="selectFile"></file-tree>
             </div>
             
             <div class="p-2 border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500 flex justify-between">
-                <span>Total: {{ files.length }} files</span>
-                <span class="font-mono"><span class="text-green-600">+{{ totalAdditions }}</span> / <span class="text-red-600">-{{ totalDeletions }}</span></span>
+                <span>{{ visibleFiles.length }} files</span>
+                <span class="font-mono"><span class="text-green-600">+{{ totalAdditions }}</span> <span class="text-red-600">-{{ totalDeletions }}</span></span>
             </div>
         </div>
 
-        <div class="flex-1 bg-gray-100 relative overflow-hidden flex flex-col">
+        <div class="flex-1 bg-gray-100 relative overflow-hidden flex flex-col w-full">
             
-            <div v-if="files.length === 0 && !isLoading" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-slate-50">
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center max-w-lg w-full">
-                    <i data-lucide="file-diff" class="w-16 h-16 mb-4 text-gray-300"></i>
-                    <h3 class="text-lg font-semibold text-gray-600">Kéo thả file .patch / .diff vào đây</h3>
-                    <div class="w-full border-t border-gray-200 my-4"></div>
-                    <textarea v-model="rawInput" @input="debouncedPaste" placeholder="Hoặc dán nội dung diff vào đây..." 
-                        class="w-full h-32 p-3 text-xs bg-white border rounded resize-none focus:ring-2 focus:ring-blue-500 outline-none code-font"></textarea>
+            <div v-if="files.length === 0 && !isLoading" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-slate-50 p-4">
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 md:p-10 flex flex-col items-center max-w-lg w-full bg-white">
+                    <i data-lucide="file-diff" class="w-12 h-12 mb-4 text-gray-300"></i>
+                    <h3 class="text-base font-semibold text-gray-600 text-center">Upload file .patch / .diff</h3>
+                    <p class="text-xs text-gray-400 mb-4 text-center">hoặc dán nội dung vào bên dưới</p>
+                    <textarea v-model="rawInput" @input="debouncedPaste" placeholder="Diff content here..." 
+                        class="w-full h-32 p-3 text-xs bg-gray-50 border rounded resize-none focus:ring-1 focus:ring-blue-500 outline-none code-font"></textarea>
                 </div>
             </div>
 
-            <div v-else class="flex-1 overflow-y-auto p-4 scroll-smooth" id="main-scroll">
+            <div v-else class="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-4 scroll-smooth" id="main-scroll">
                 
-                <div class="flex justify-end mb-4 gap-2 sticky top-0 z-10 pointer-events-none">
+                <div class="flex justify-end mb-3 sticky top-0 z-10 pointer-events-none">
                     <div class="bg-white/90 backdrop-blur border border-gray-200 p-1 rounded shadow-sm pointer-events-auto flex gap-2">
-                        <button @click="toggleAll(false)" class="text-xs px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Thu gọn tất cả</button>
+                        <button @click="toggleAll(false)" class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Collapse All</button>
                         <span class="w-px bg-gray-200"></span>
-                        <button @click="toggleAll(true)" class="text-xs px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Mở rộng tất cả</button>
+                        <button @click="toggleAll(true)" class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Expand All</button>
                     </div>
                 </div>
 
                 <div v-for="file in visibleFiles" :key="file.id" :id="'file-' + file.id" 
-                    class="mb-6 bg-white border border-gray-300 rounded shadow-sm overflow-hidden transition-all duration-300">
+                    class="mb-6 bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden flex flex-col">
                     
                     <div @click="file.collapsed = !file.collapsed" 
-                        class="px-4 py-2 border-b flex justify-between items-center cursor-pointer select-none hover:bg-gray-50 transition-colors bg-gradient-to-r from-gray-50 to-white">
-                        <div class="flex items-center gap-2 overflow-hidden">
-                            <i :data-lucide="file.collapsed ? 'chevron-right' : 'chevron-down'" class="w-4 h-4 text-gray-500"></i>
-                            <span class="font-mono text-sm font-semibold text-gray-700 truncate select-text">{{ file.name }}</span>
-                            <span :class="getStatusBadge(file.status)" class="text-[10px] font-bold px-1.5 rounded border uppercase">{{ file.status }}</span>
-                        </div>
-                        <div class="flex gap-3 text-xs opacity-70">
-                             <span class="text-green-700 font-mono">+{{ file.additions }}</span>
-                             <span class="text-red-700 font-mono">-{{ file.deletions }}</span>
+                        class="px-3 py-2 border-b border-gray-200 flex justify-between items-center cursor-pointer select-none bg-gray-50 hover:bg-gray-100 transition">
+                        <div class="flex items-center gap-2 overflow-hidden w-full">
+                            <i :data-lucide="file.collapsed ? 'chevron-right' : 'chevron-down'" class="w-4 h-4 text-gray-500 shrink-0"></i>
+                            <span class="font-mono text-xs md:text-sm font-semibold text-gray-700 truncate" :title="file.name">{{ file.name }}</span>
+                            <span :class="getStatusBadge(file.status)" class="text-[9px] font-bold px-1.5 rounded border uppercase shrink-0">{{ file.status.substring(0,3) }}</span>
                         </div>
                     </div>
 
-                    <div v-if="!file.collapsed" class="overflow-x-auto bg-white border-t border-gray-100">
+                    <div v-if="!file.collapsed" class="overflow-x-auto">
                         
-                        <table v-if="viewMode === 'unified'" class="w-full text-left border-collapse code-font">
+                        <table v-if="viewMode === 'unified'" class="w-full text-left border-collapse code-font min-w-[600px] md:min-w-full">
                             <tbody v-for="(chunk, idx) in file.chunks" :key="idx">
-                                <tr class="bg-blue-50/50 text-gray-500"><td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-xs">{{ chunk.header }}</td></tr>
+                                <tr class="bg-blue-50/50 text-blue-500"><td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">@@ -{{chunk.oldStart}},{{chunk.oldLines}} +{{chunk.newStart}},{{chunk.newLines}} @@</td></tr>
                                 <tr v-for="line in chunk.lines" :key="line.id" class="hover:bg-gray-50">
-                                    <td class="w-10 px-2 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50">{{ line.oldNo }}</td>
-                                    <td class="w-10 px-2 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50">{{ line.newNo }}</td>
-                                    <td class="px-2 whitespace-pre-wrap break-all relative" :class="getLineColor(line.type, 'bg')">
-                                        <span v-if="line.type === 'add'" class="absolute left-0.5 text-green-600 select-none">+</span>
-                                        <span v-else-if="line.type === 'del'" class="absolute left-0.5 text-red-600 select-none">-</span>
-                                        <span class="pl-4 block" :class="getLineColor(line.type, 'text')">{{ line.content }}</span>
+                                    <td class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">{{ line.oldNo }}</td>
+                                    <td class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">{{ line.newNo }}</td>
+                                    <td class="px-2 whitespace-pre pr-2 relative pt-0.5 pb-0.5" :style="getLineStyle(line.type)">
+                                        <span v-if="line.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
+                                        <span v-else-if="line.type === 'del'" class="absolute left-1 text-red-700 select-none">-</span>
+                                        <span class="pl-4 block">{{ line.content }}</span>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <table v-else class="w-full text-left border-collapse code-font table-fixed">
+                        <table v-else class="w-full text-left border-collapse code-font table-fixed min-w-[800px]">
+                             <colgroup>
+                                <col class="w-[40px]">
+                                <col class="w-[calc(50%-40px)]">
+                                <col class="w-[40px]">
+                                <col class="w-[calc(50%-40px)]">
+                            </colgroup>
                             <tbody v-for="(chunk, idx) in file.splitChunks" :key="idx">
-                                <tr class="bg-blue-50/50 text-gray-500"><td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-xs text-center">{{ chunk.header }}</td></tr>
-                                <tr v-for="row in chunk.rows" :key="row.id" class="hover:bg-gray-50 border-b border-gray-50">
-                                    <td class="w-8 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/30 py-0.5">{{ row.left ? row.left.no : '' }}</td>
-                                    <td class="w-[48%] overflow-hidden whitespace-pre-wrap break-all py-0.5 px-1 relative" :class="row.left ? getLineColor('del', 'bg') : ''">
-                                        <span v-if="row.left" :class="getLineColor('del', 'text')">{{ row.left.content }}</span>
+                                <tr class="bg-blue-50/50 text-blue-500">
+                                    <td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">
+                                        @@ -{{chunk.oldStart}},{{chunk.oldLines}} +{{chunk.newStart}},{{chunk.newLines}} @@
                                     </td>
+                                </tr>
+                                <tr v-for="row in chunk.rows" :key="row.id" class="border-b border-gray-50 group">
                                     
-                                    <td class="w-8 text-right text-gray-400 select-none border-x border-gray-100 bg-gray-50/30 py-0.5">{{ row.right ? row.right.no : '' }}</td>
-                                    <td class="w-[48%] overflow-hidden whitespace-pre-wrap break-all py-0.5 px-1 relative" :class="row.right ? getLineColor('add', 'bg') : ''">
-                                        <span v-if="row.right" :class="getLineColor('add', 'text')">{{ row.right.content }}</span>
+                                    <td class="px-1 text-right text-gray-400 select-none border-r border-gray-200 bg-gray-50 text-[10px] pt-1">{{ row.left ? row.left.no : '' }}</td>
+                                    <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5" 
+                                        :class="!row.left ? 'empty-cell' : ''"
+                                        :style="row.left ? getLineStyle(row.left.type) : {}">
+                                        <span v-if="row.left && row.left.type === 'del'" class="absolute left-1 text-red-700 select-none">-</span>
+                                        <span v-if="row.left" class="pl-3 block">{{ row.left.content }}</span>
+                                    </td>
+
+                                    <td class="px-1 text-right text-gray-400 select-none border-l border-r border-gray-200 bg-gray-50 text-[10px] pt-1">{{ row.right ? row.right.no : '' }}</td>
+                                    <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5" 
+                                        :class="!row.right ? 'empty-cell' : ''"
+                                        :style="row.right ? getLineStyle(row.right.type) : {}">
+                                        <span v-if="row.right && row.right.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
+                                        <span v-if="row.right" class="pl-3 block">{{ row.right.content }}</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -173,7 +214,7 @@
                     </div>
                 </div>
                 
-                <div class="h-20 flex items-center justify-center text-gray-300 text-sm">--- End of Diff ---</div>
+                <div class="h-20 flex items-center justify-center text-gray-300 text-xs pb-10">--- End of Diff ---</div>
             </div>
         </div>
     </div>
@@ -182,20 +223,13 @@
 <template id="file-tree-template">
     <ul class="pl-2">
         <li v-for="node in nodes" :key="node.path">
-            <div class="flex items-center gap-1 py-1 px-1 rounded hover:bg-blue-50 cursor-pointer group transition-colors"
+            <div class="flex items-center gap-1.5 py-1 px-1 rounded hover:bg-blue-50 cursor-pointer transition-colors"
                  @click="handleClick(node)">
-                <i v-if="node.type === 'folder'" 
-                   :data-lucide="node.expanded ? 'folder-open' : 'folder'" 
-                   class="w-3.5 h-3.5 text-blue-400 fill-current opacity-80"></i>
+                <i v-if="node.type === 'folder'" :data-lucide="node.expanded ? 'folder-open' : 'folder'" class="w-3.5 h-3.5 text-blue-400 fill-current opacity-80"></i>
                 <i v-else data-lucide="file-code" class="w-3.5 h-3.5 text-gray-400"></i>
-                
-                <span class="text-xs truncate flex-1" :class="node.type === 'folder' ? 'font-semibold text-gray-600' : 'text-gray-700 font-mono'">{{ node.name }}</span>
-                
-                <span v-if="node.type === 'file'" 
-                      class="w-1.5 h-1.5 rounded-full mr-1 shrink-0" 
-                      :class="getStatusDot(node.fileData.status)"></span>
+                <span class="text-xs truncate flex-1" :class="node.type === 'folder' ? 'font-medium text-gray-700' : 'text-gray-600 font-mono'">{{ node.name }}</span>
+                <span v-if="node.type === 'file'" class="w-1.5 h-1.5 rounded-full mr-1" :class="getStatusDot(node.fileData.status)"></span>
             </div>
-            
             <div v-if="node.type === 'folder' && node.expanded" class="border-l border-gray-200 ml-2">
                 <file-tree :nodes="node.children" :depth="depth + 1" @select-file="$emit('select-file', $event)"></file-tree>
             </div>
@@ -204,7 +238,7 @@
 </template>
 
 <script>
-    const { createApp, ref, computed, nextTick, onMounted, onUpdated, watch } = Vue;
+    const { createApp, ref, computed, nextTick, onMounted, watch } = Vue;
 
     // --- RECURSIVE COMPONENT ---
     const FileTree = {
@@ -217,202 +251,120 @@
                 if (node.type === 'folder') {
                     node.expanded = !node.expanded;
                     refreshIcons();
-                } else {
-                    emit('select-file', node.fileData.id);
-                }
+                } else emit('select-file', node.fileData.id);
             };
-            
-            const getStatusDot = (status) => {
-                if (status === 'added') return 'bg-green-500';
-                if (status === 'deleted') return 'bg-red-500';
-                return 'bg-blue-400';
-            };
-
+            const getStatusDot = (s) => s === 'added' ? 'bg-green-500' : (s === 'deleted' ? 'bg-red-500' : 'bg-blue-400');
             return { handleClick, getStatusDot };
         }
     };
 
     // --- MAIN APP ---
-    const app = createApp({
+    createApp({
         components: { FileTree },
         setup() {
-            // State
             const rawInput = ref('');
-            const files = ref([]); // All parsed files
+            const files = ref([]);
             const searchInput = ref('');
-            const searchQuery = ref(''); // Debounced search query
+            const searchQuery = ref('');
             const filters = ref(['added', 'modified', 'deleted']);
-            const viewMode = ref('unified'); // unified | split
+            const viewMode = ref('unified');
             const isLoading = ref(false);
-            const isSearching = ref(false);
             const loadingText = ref('');
+            const showSidebar = ref(false); // Mobile sidebar toggle
 
-            // Computed Stats
-            const totalAdditions = computed(() => files.value.reduce((sum, f) => sum + f.additions, 0));
-            const totalDeletions = computed(() => files.value.reduce((sum, f) => sum + f.deletions, 0));
+            // Stats
+            const totalAdditions = computed(() => files.value.reduce((s, f) => s + f.additions, 0));
+            const totalDeletions = computed(() => files.value.reduce((s, f) => s + f.deletions, 0));
 
-            // Filtering
+            // Filter & Tree
             const visibleFiles = computed(() => {
-                const query = searchQuery.value.toLowerCase();
-                return files.value.filter(f => {
-                    const matchesName = f.name.toLowerCase().includes(query);
-                    const matchesStatus = filters.value.includes(f.status);
-                    return matchesName && matchesStatus;
-                });
+                const q = searchQuery.value.toLowerCase();
+                return files.value.filter(f => f.name.toLowerCase().includes(q) && filters.value.includes(f.status));
             });
 
-            // Tree Builder
             const fileTree = computed(() => {
                 const root = [];
-                const addPath = (pathParts, currentLevel, fileData) => {
-                    const part = pathParts[0];
-                    let node = currentLevel.find(n => n.name === part);
-
+                const add = (parts, level, file) => {
+                    const part = parts[0];
+                    let node = level.find(n => n.name === part);
                     if (!node) {
-                        const isFile = pathParts.length === 1;
-                        node = {
-                            name: part,
-                            path: fileData ? fileData.name : part, // simplified
-                            type: isFile ? 'file' : 'folder',
-                            children: [],
-                            expanded: true, // Default expand folders
-                            fileData: isFile ? fileData : null
+                        node = { 
+                            name: part, path: part + Math.random(), 
+                            type: parts.length === 1 ? 'file' : 'folder', 
+                            children: [], expanded: true, fileData: parts.length === 1 ? file : null 
                         };
-                        currentLevel.push(node);
-                        // Sort folders first
-                        currentLevel.sort((a, b) => (a.type === 'folder' ? -1 : 1));
+                        level.push(node);
+                        level.sort((a,b) => (a.type === 'folder' ? -1 : 1));
                     }
-
-                    if (pathParts.length > 1) {
-                        addPath(pathParts.slice(1), node.children, fileData);
-                    }
+                    if (parts.length > 1) add(parts.slice(1), node.children, file);
                 };
-
-                visibleFiles.value.forEach(file => {
-                    const parts = file.name.split('/');
-                    addPath(parts, root, file);
-                });
-
+                visibleFiles.value.forEach(f => add(f.name.split('/'), root, f));
                 return root;
             });
 
-            // --- DEBOUNCE UTILS ---
-            let pasteTimeout;
-            const debouncedPaste = () => {
-                if (!rawInput.value.trim()) return;
-                isLoading.value = true;
-                loadingText.value = 'Đang đợi nhập xong...';
-                if (pasteTimeout) clearTimeout(pasteTimeout);
-                
-                pasteTimeout = setTimeout(() => {
-                    loadingText.value = 'Đang phân tích patch...';
-                    // Use nextTick + setTimeout to allow UI render loop to show loading state
-                    setTimeout(() => {
-                        parsePatch(rawInput.value);
-                        isLoading.value = false;
-                    }, 50); 
-                }, 1000); // 1s delay
-            };
-
-            let searchTimeout;
-            const debouncedSearch = () => {
-                isSearching.value = true;
-                if (searchTimeout) clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    searchQuery.value = searchInput.value;
-                    isSearching.value = false;
-                    refreshIcons(); // Re-render icons for tree
-                }, 300);
-            };
-
-            // --- PARSING LOGIC ---
+            // --- CORE LOGIC: PARSE & SPLIT ALIGNMENT ---
             const parsePatch = (text) => {
                 const newFiles = [];
                 const lines = text.split('\n');
-                let currentFile = null;
-                let idCounter = 0;
+                let cur = null;
+                let id = 0;
 
                 for (let line of lines) {
                     if (line.startsWith('diff --git')) {
-                        if (currentFile) processSplitChunks(currentFile); // Process chunks for split view
-                        if (currentFile) newFiles.push(currentFile);
-                        
+                        if (cur) { alignSplitChunks(cur); newFiles.push(cur); }
                         const parts = line.split(' ');
-                        const bPath = parts[parts.length - 1];
-                        const name = bPath.startsWith('b/') ? bPath.substring(2) : bPath;
-
-                        currentFile = {
-                            id: idCounter++,
-                            name: name,
-                            status: 'modified', // default
-                            additions: 0,
-                            deletions: 0,
-                            chunks: [],
-                            splitChunks: [],
-                            collapsed: false
+                        const path = parts[parts.length - 1];
+                        cur = { 
+                            id: id++, name: path.startsWith('b/') ? path.substring(2) : path, 
+                            status: 'modified', additions: 0, deletions: 0, 
+                            chunks: [], splitChunks: [], collapsed: false 
                         };
-                    } else if (currentFile) {
-                        if (line.startsWith('new file mode')) currentFile.status = 'added';
-                        else if (line.startsWith('deleted file mode')) currentFile.status = 'deleted';
-                        
+                    } else if (cur) {
+                        if (line.startsWith('new file')) cur.status = 'added';
+                        else if (line.startsWith('deleted file')) cur.status = 'deleted';
                         else if (line.startsWith('@@')) {
-                            const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-                            currentFile.chunks.push({
-                                header: line,
-                                lines: [],
-                                oldStart: parseInt(match?.[1] || 0),
-                                newStart: parseInt(match?.[2] || 0),
-                                oldCursor: parseInt(match?.[1] || 0),
-                                newCursor: parseInt(match?.[2] || 0)
+                            const m = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+                            cur.chunks.push({ 
+                                header: line, lines: [], 
+                                oldStart: parseInt(m[1]), oldLines: m[2] || 1, oldCur: parseInt(m[1]),
+                                newStart: parseInt(m[3]), newLines: m[4] || 1, newCur: parseInt(m[3])
                             });
-                        } else if (currentFile.chunks.length > 0) {
-                            const chunk = currentFile.chunks[currentFile.chunks.length - 1];
-                            const prefix = line[0];
-                            
-                            // Skip metadata
-                            if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('index')) continue;
-
-                            if (prefix === '+' || prefix === '-' || prefix === ' ') {
-                                const type = prefix === '+' ? 'add' : (prefix === '-' ? 'del' : 'ctx');
-                                const content = line.substring(1);
-                                
-                                let oldNo = null, newNo = null;
-                                if (type !== 'add') oldNo = chunk.oldCursor++;
-                                if (type !== 'del') newNo = chunk.newCursor++;
-
-                                if (type === 'add') currentFile.additions++;
-                                if (type === 'del') currentFile.deletions++;
-
-                                chunk.lines.push({ type, content, oldNo, newNo });
+                        } else if (cur.chunks.length && !line.startsWith('---') && !line.startsWith('+++') && !line.startsWith('index')) {
+                            const chunk = cur.chunks[cur.chunks.length - 1];
+                            const p = line[0];
+                            if (['+', '-', ' '].includes(p)) {
+                                const type = p === '+' ? 'add' : (p === '-' ? 'del' : 'ctx');
+                                let oldNo = type !== 'add' ? chunk.oldCur++ : null;
+                                let newNo = type !== 'del' ? chunk.newCur++ : null;
+                                if (type === 'add') cur.additions++;
+                                if (type === 'del') cur.deletions++;
+                                chunk.lines.push({ type, content: line.substring(1), oldNo, newNo });
                             }
                         }
                     }
                 }
-                if (currentFile) {
-                    processSplitChunks(currentFile);
-                    newFiles.push(currentFile);
-                }
-
+                if (cur) { alignSplitChunks(cur); newFiles.push(cur); }
                 files.value = newFiles;
                 refreshIcons();
             };
 
-            // Pre-process chunks for Side-By-Side View
-            const processSplitChunks = (file) => {
+            // --- ALIGNMENT ALGORITHM FOR SPLIT VIEW ---
+            const alignSplitChunks = (file) => {
                 file.splitChunks = file.chunks.map(chunk => {
                     const rows = [];
+                    // Buffer for continuous changes
                     let delBuffer = [];
                     let addBuffer = [];
 
                     const flushBuffers = () => {
-                        // Attempt to match dels and adds if they are next to each other
-                        const maxLen = Math.max(delBuffer.length, addBuffer.length);
-                        for (let i = 0; i < maxLen; i++) {
-                            const delLine = delBuffer[i] || null;
-                            const addLine = addBuffer[i] || null;
+                        // Pair lines up to the max length
+                        const len = Math.max(delBuffer.length, addBuffer.length);
+                        for (let i = 0; i < len; i++) {
+                            const delLine = delBuffer[i];
+                            const addLine = addBuffer[i];
                             rows.push({
-                                left: delLine ? { no: delLine.oldNo, content: delLine.content } : null,
-                                right: addLine ? { no: addLine.newNo, content: addLine.content } : null
+                                left: delLine ? { no: delLine.oldNo, content: delLine.content, type: 'del' } : null,
+                                right: addLine ? { no: addLine.newNo, content: addLine.content, type: 'add' } : null
                             });
                         }
                         delBuffer = [];
@@ -421,10 +373,10 @@
 
                     chunk.lines.forEach(line => {
                         if (line.type === 'ctx') {
-                            flushBuffers();
+                            flushBuffers(); // Change block ended, flush it
                             rows.push({
-                                left: { no: line.oldNo, content: line.content },
-                                right: { no: line.newNo, content: line.content }
+                                left: { no: line.oldNo, content: line.content, type: 'ctx' },
+                                right: { no: line.newNo, content: line.content, type: 'ctx' }
                             });
                         } else if (line.type === 'del') {
                             delBuffer.push(line);
@@ -432,127 +384,79 @@
                             addBuffer.push(line);
                         }
                     });
-                    flushBuffers(); // Flush remaining
-                    return { header: chunk.header, rows };
+                    flushBuffers(); // Flush end of chunk
+                    return { ...chunk, rows };
                 });
             };
 
-            // --- ACTIONS ---
-            const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
+            // --- EVENTS ---
+            let timeout;
+            const debouncedPaste = () => {
                 isLoading.value = true;
-                loadingText.value = 'Đang đọc file...';
-                
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    loadingText.value = 'Đang xử lý...';
-                    setTimeout(() => {
-                        rawInput.value = ''; // clear text area if used file
-                        parsePatch(evt.target.result);
-                        isLoading.value = false;
-                    }, 100);
+                loadingText.value = 'Waiting...';
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    loadingText.value = 'Parsing...';
+                    setTimeout(() => { parsePatch(rawInput.value); isLoading.value = false; }, 50);
+                }, 800);
+            };
+
+            const debouncedSearch = () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => { searchQuery.value = searchInput.value; refreshIcons(); }, 300);
+            };
+
+            const handleFileUpload = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                isLoading.value = true; loadingText.value = 'Reading...';
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    loadingText.value = 'Processing...';
+                    setTimeout(() => { 
+                        rawInput.value = '';
+                        parsePatch(ev.target.result); 
+                        isLoading.value = false; 
+                    }, 50);
                 };
-                reader.readAsText(file);
+                r.readAsText(f);
             };
 
-            const handleDrop = (e) => {
-                const file = e.dataTransfer.files[0];
-                if (file) {
-                    handleFileUpload({ target: { files: [file] } });
-                }
+            const selectFile = (id) => {
+                showSidebar.value = false; // Close mobile drawer
+                nextTick(() => {
+                    const el = document.getElementById('file-' + id);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        el.classList.add('ring-2', 'ring-blue-500');
+                        setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
+                    }
+                });
             };
 
-            const toggleAll = (expand) => {
-                files.value.forEach(f => f.collapsed = !expand);
-            };
-
-            const scrollToFile = (fileId) => {
-                const el = document.getElementById('file-' + fileId);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // Highlight effect
-                    el.classList.add('ring-2', 'ring-blue-500');
-                    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
-                }
-            };
-
-            // --- STYLING UTILS ---
-            const getFilterClass = (status) => {
-                if (filters.value.includes(status)) {
-                    if (status === 'added') return 'bg-green-100 border-green-300 text-green-800';
-                    if (status === 'modified') return 'bg-blue-100 border-blue-300 text-blue-800';
-                    if (status === 'deleted') return 'bg-red-100 border-red-300 text-red-800';
-                }
-                return 'bg-white border-gray-200 text-gray-400 grayscale opacity-60 hover:opacity-100';
-            };
-
-            const getStatusDotColor = (status) => {
-                if (status === 'added') return 'bg-green-500';
-                if (status === 'modified') return 'bg-blue-500';
-                return 'bg-red-500';
-            };
-
-            const getStatusBadge = (status) => {
-                if (status === 'added') return 'bg-green-100 text-green-800 border-green-200';
-                if (status === 'deleted') return 'bg-red-100 text-red-800 border-red-200';
-                return 'bg-blue-100 text-blue-800 border-blue-200';
-            };
-
-            const getLineColor = (type, prop) => {
-                if (prop === 'bg') {
-                    if (type === 'add') return 'bg-[#d1fae5]/50';
-                    if (type === 'del') return 'bg-[#fee2e2]/50';
-                }
-                if (prop === 'text') {
-                    if (type === 'add') return 'text-green-900';
-                    if (type === 'del') return 'text-red-900';
-                }
-                return '';
-            };
-
-            // Helpers
-            const refreshIcons = () => nextTick(() => window.lucide && window.lucide.createIcons());
+            const toggleSidebar = () => showSidebar.value = !showSidebar.value;
+            const toggleAll = (v) => files.value.forEach(f => f.collapsed = !v);
             
-            watch(viewMode, refreshIcons); // Refresh icons when view changes
+            // --- STYLES ---
+            const getStatusBadge = (s) => s === 'added' ? 'bg-green-100 text-green-800 border-green-200' : (s === 'deleted' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200');
+            const getFilterClass = (s) => filters.value.includes(s) ? (s === 'added' ? 'bg-green-100 border-green-300 text-green-800' : (s === 'deleted' ? 'bg-red-100 border-red-300 text-red-800' : 'bg-blue-100 border-blue-300 text-blue-800')) : 'bg-white border-gray-200 text-gray-400 grayscale opacity-60';
+            const getLineStyle = (type) => {
+                if (type === 'add') return { backgroundColor: 'var(--bg-add)', color: 'var(--text-add)' };
+                if (type === 'del') return { backgroundColor: 'var(--bg-del)', color: 'var(--text-del)' };
+                return { color: '#24292f' };
+            };
 
-            onMounted(refreshIcons);
-            onUpdated(refreshIcons);
+            onMounted(() => refreshIcons());
+            watch(viewMode, () => refreshIcons());
 
             return {
-                rawInput,
-                files,
-                visibleFiles,
-                fileTree,
-                searchInput,
-                filters,
-                viewMode,
-                isLoading,
-                isSearching,
-                loadingText,
-                totalAdditions,
-                totalDeletions,
-                handleFileUpload,
-                handleDrop,
-                debouncedPaste,
-                debouncedSearch,
-                toggleAll,
-                scrollToFile,
-                getFilterClass,
-                getStatusDotColor,
-                getStatusBadge,
-                getLineColor
+                rawInput, files, visibleFiles, fileTree, searchInput, filters, viewMode, isLoading, loadingText, showSidebar, totalAdditions, totalDeletions,
+                handleFileUpload, debouncedPaste, debouncedSearch, selectFile, toggleSidebar, toggleAll, getStatusBadge, getFilterClass, getLineStyle
             };
         }
-    });
+    }).mount('#app');
 
-    app.mount('#app');
-
-    // Global helper for icons
-    function refreshIcons() {
-        if (window.lucide) window.lucide.createIcons();
-    }
+    function refreshIcons() { if (window.lucide) window.lucide.createIcons(); }
 </script>
 </body>
 </html>
