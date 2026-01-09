@@ -61,14 +61,14 @@
             </label>
           </div>
           <div class="relative group">
-            <input v-model="searchInput" @input="debouncedSearch" type="text" placeholder="Tìm file..."
+            <input v-model="searchInput" @input="debouncedSearch" type="text" placeholder="File search..."
               class="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded bg-white focus:ring-1 focus:ring-blue-500 outline-none">
             <Search class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-2">
-          <div v-if="files.length === 0" class="text-center text-gray-400 text-xs mt-10">Chưa có file</div>
+          <div v-if="files.length === 0" class="text-center text-gray-400 text-xs mt-10">File not found</div>
           <FileTree :nodes="fileTree" :depth="0" @select-file="selectFile" />
         </div>
 
@@ -86,8 +86,8 @@
           <div
             class="border-2 border-dashed border-gray-300 rounded-xl p-6 md:p-10 flex flex-col items-center max-w-lg w-full bg-white">
             <FileDiff class="w-12 h-12 mb-4 text-gray-300" />
-            <h3 class="text-base font-semibold text-gray-600 text-center">Upload file .patch / .diff</h3>
-            <p class="text-xs text-gray-400 mb-4 text-center">hoặc dán nội dung vào bên dưới</p>
+            <h3 class="text-base font-semibold text-gray-600 text-center">Upload File .patch / .diff</h3>
+            <p class="text-xs text-gray-400 mb-4 text-center">Or Paste Content Into This Below</p>
             <textarea v-model="rawInput" @input="debouncedPaste" placeholder="Diff content here..."
               class="w-full h-32 p-3 text-xs bg-gray-50 border rounded resize-none focus:ring-1 focus:ring-blue-500 outline-none code-font"></textarea>
           </div>
