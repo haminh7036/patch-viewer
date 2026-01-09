@@ -1,0 +1,141 @@
+From 9f8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g Mon Sep 17 00:00:00 2001
+From: Developer <dev@example.com>
+Date: Fri, 09 Jan 2026 10:00:00 +0700
+Subject: [PATCH] Refactor code, remove legacy config and add SEO file
+
+---
+ src/App.js                       |  12 +--
+ config/old_settings.json         |  10 ---
+ public/robots.txt                |   5 +
+ src/utils/heavy_calculation.js   | 150 +++++++++++++++++++++++++++++++
+ 4 files changed, 161 insertions(+), 16 deletions(-)
+ delete mode 100644 config/old_settings.json
+ create mode 100644 public/robots.txt
+
+diff --git a/src/App.js b/src/App.js
+index 83a2b1c..94b3c2d 100644
+--- a/src/App.js
++++ b/src/App.js
+@@ -10,7 +10,7 @@ class App extends Component {
+   render() {
+     return (
+       <div className="App">
+-        <header className="App-header">
+-          <img src={logo} className="App-logo" alt="logo" />
+-          <p>
+-            Edit <code>src/App.js</code> and save to reload.
+-          </p>
+-        </header>
++        <header className="App-header-new">
++          <h1>Welcome to the New Dashboard</h1>
++          <p>Performance has been improved.</p>
++          <Navigation />
++        </header>
++        <main>
++          <ContentView />
++        </main>
+       </div>
+     );
+   }
+ }
+diff --git a/config/old_settings.json b/config/old_settings.json
+deleted file mode 100644
+index 5d8a2b1..0000000
+--- a/config/old_settings.json
++++ /dev/null
+@@ -1,10 +0,0 @@
+-{
+-  "database": {
+-    "host": "localhost",
+-    "port": 3306,
+-    "legacy_mode": true
+-  },
+-  "theme": "dark",
+-  "version": "1.0.0",
+-  "deprecated": true
+-}
+diff --git a/public/robots.txt b/public/robots.txt
+new file mode 100644
+index 0000000..3c9d2f1
+--- /dev/null
++++ b/public/robots.txt
+@@ -0,0 +1,5 @@
++User-agent: *
++Allow: /
++Disallow: /admin
++Disallow: /private
++Sitemap: https://example.com/sitemap.xml
+diff --git a/src/utils/heavy_calculation.js b/src/utils/heavy_calculation.js
+index 2a3b4c5..7d8e9f0 100644
+--- a/src/utils/heavy_calculation.js
++++ b/src/utils/heavy_calculation.js
+@@ -15,6 +15,58 @@ export const calculateMetric = (data) => {
+   // Initial processing
+   let result = 0;
+   
++  // STEP 1: Normalize Data
++  // This section handles the normalization of input vectors
++  // ensuring that all values fall within the expected range [0, 1]
++  data.forEach(item => {
++      if (item.value > 100) {
++          item.normalized = 1;
++      } else if (item.value < 0) {
++          item.normalized = 0;
++      } else {
++          item.normalized = item.value / 100;
++      }
++      
++      // Apply weighting factor based on timestamp
++      const age = Date.now() - item.timestamp;
++      const decay = Math.exp(-age / 10000); // decay over time
++      item.weightedScore = item.normalized * decay;
++  });
++
++  // STEP 2: Matrix Multiplication Simulation
++  // Heavy loop to simulate performance impact in diff viewer
++  const matrix = [];
++  for(let i = 0; i < 50; i++) {
++      let row = [];
++      for(let j = 0; j < 50; j++) {
++          // Complex calculation
++          let val = (i * j) + Math.sin(i) * Math.cos(j);
++          row.push(val);
++      }
++      matrix.push(row);
++  }
++
++  // STEP 3: Aggregation
++  // Combine results from the matrix and the normalized data
++  // This ensures we have a meaningful return value
++  
++  /* +   * TODO: Optimize this section
++   * currently O(n^2) complexity which is acceptable for n < 1000
++   * but will need refactoring for larger datasets.
++   */
++   
++  return data.reduce((acc, curr) => {
++      return acc + curr.weightedScore;
++  }, 0);
++}
++
++export const legacyFunction = () => {
++    // This function is kept for backward compatibility
++    console.warn("Deprecation Warning: Use calculateMetric instead");
++    return null;
++}
++
++// Additional helper functions added below
++// intended to test scroll behavior in patch viewers
++
++function helperOne() { return 1; }
++function helperTwo() { return 2; }
++function helperThree() { return 3; }
++function helperFour() { return 4; }
++function helperFive() { return 5; }
++function helperSix() { return 6; }
++function helperSeven() { return 7; }
++function helperEight() { return 8; }
++function helperNine() { return 9; }
++function helperTen() { return 10; }
++
+ // End of file
