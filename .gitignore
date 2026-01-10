@@ -27,4 +27,5 @@ dist-ssr
 .vercel
 .env*.local
 .continue/
-tests/output/*
+tests/output/
+tests/playwright-report/

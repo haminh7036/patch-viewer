@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 60 * 1000,
   outputDir: 'tests/output',
-  reporter: [['list'], ['html', { outputFolder: 'tests/output/playwright-report' }]],
+  reporter: [['list'], ['html', { outputFolder: 'tests/playwright-report' }]],
   use: {
     browserName: 'chromium',
     headless: true,
