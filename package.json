@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node tests/run-test.js"
   },
   "dependencies": {
     "@vercel/speed-insights": "^1.3.1",

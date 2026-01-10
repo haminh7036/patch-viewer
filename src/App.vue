@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-screen" @dragover.prevent @drop.prevent="handleDrop">
 
-    <header class="bg-gray-900 text-white px-3 py-2 shadow-md flex justify-between items-center z-30 shrink-0 h-14">
+    <header class="sticky top-0 bg-gray-900 text-white px-3 py-2 shadow-md flex justify-between items-center z-40 shrink-0 h-14">
       <div class="flex items-center gap-3">
         <button @click="toggleSidebar" class="md:hidden p-1 rounded hover:bg-gray-700">
           <Menu class="w-5 h-5 text-gray-300" />
@@ -191,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight } from 'lucide-vue-next';
 import FileTree from './components/FileTree.vue';
 import { parsePatch } from './utils/patchParser.js';
@@ -283,7 +283,14 @@ const selectFile = (id) => {
   showSidebar.value = false;
   nextTick(() => {
     const el = document.getElementById('file-' + id);
-    if (el) {
+    const container = document.getElementById('main-scroll');
+    if (el && container) {
+      // Scroll within the inner scroll container so the header stays visible on mobile
+      const top = el.offsetTop - container.offsetTop - 8; // small offset
+      container.scrollTo({ top, behavior: 'smooth' });
+      el.classList.add('ring-2', 'ring-blue-500');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
+    } else if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       el.classList.add('ring-2', 'ring-blue-500');
       setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
