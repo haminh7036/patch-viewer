@@ -1,7 +1,8 @@
 <template>
   <div class="flex flex-col h-screen" @dragover.prevent @drop.prevent="handleDrop">
 
-    <header class="sticky top-0 bg-gray-900 text-white px-3 py-2 shadow-md flex justify-between items-center z-40 shrink-0 h-14">
+    <header
+      class="sticky top-0 bg-gray-900 text-white px-3 py-2 shadow-md flex justify-between items-center z-40 shrink-0 h-14">
       <div class="flex items-center gap-3">
         <button @click="toggleSidebar" class="md:hidden p-1 rounded hover:bg-gray-700">
           <Menu class="w-5 h-5 text-gray-300" />
@@ -69,7 +70,7 @@
 
         <div class="flex-1 overflow-y-auto p-2">
           <div v-if="files.length === 0" class="text-center text-gray-400 text-xs mt-10">File not found</div>
-          <FileTree :nodes="fileTree" :depth="0" @select-file="selectFile" />
+          <FileTree :nodes="fileTree" :depth="0" @select-file="selectFile" @toggle-folder="toggleFolder" />
         </div>
 
         <div class="p-2 border-t border-gray-200 bg-gray-50 text-[10px] text-gray-500 flex justify-between">
@@ -220,25 +221,36 @@ const visibleFiles = computed(() => {
   return files.value.filter(f => f.name.toLowerCase().includes(q) && filters.value.includes(f.status));
 });
 
+const expandedPaths = ref({});
+
 const fileTree = computed(() => {
   const root = [];
-  const add = (parts, level, file) => {
+  const add = (parts, level, file, parentPath = '') => {
     const part = parts[0];
+    const curPath = parentPath ? `${parentPath}/${part}` : part;
     let node = level.find(n => n.name === part);
     if (!node) {
       node = {
-        name: part, path: part + Math.random(),
+        name: part,
+        path: curPath,
         type: parts.length === 1 ? 'file' : 'folder',
-        children: [], expanded: true, fileData: parts.length === 1 ? file : null
+        children: [],
+        expanded: expandedPaths.value[curPath] !== undefined ? expandedPaths.value[curPath] : true,
+        fileData: parts.length === 1 ? file : null
       };
       level.push(node);
       level.sort((a, b) => (a.type === 'folder' ? -1 : 1));
     }
-    if (parts.length > 1) add(parts.slice(1), node.children, file);
+    if (parts.length > 1) add(parts.slice(1), node.children, file, curPath);
   };
   visibleFiles.value.forEach(f => add(f.name.split('/'), root, f));
   return root;
 });
+
+const toggleFolder = (path) => {
+  const current = expandedPaths.value[path] !== undefined ? expandedPaths.value[path] : true;
+  expandedPaths.value = { ...expandedPaths.value, [path]: !current };
+};
 
 // Event Handlers
 let timeout;

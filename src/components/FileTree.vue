@@ -2,7 +2,7 @@
     <ul class="pl-2">
         <li v-for="node in nodes" :key="node.path">
             <div class="flex items-center gap-1.5 py-1 px-1 rounded hover:bg-blue-50 cursor-pointer transition-colors"
-                @click="handleClick(node)">
+                @click="(e) => handleClick(node, e)">
                 <FolderOpen v-if="node.type === 'folder' && node.expanded"
                     class="w-3.5 h-3.5 text-blue-400 fill-current opacity-80" />
                 <Folder v-else-if="node.type === 'folder'" class="w-3.5 h-3.5 text-blue-400 fill-current opacity-80" />
@@ -18,7 +18,8 @@
             </div>
 
             <div v-if="node.type === 'folder' && node.expanded" class="border-l border-gray-200 ml-2">
-                <FileTree :nodes="node.children" :depth="depth + 1" @select-file="$emit('select-file', $event)" />
+                <FileTree :nodes="node.children" :depth="depth + 1" @select-file="$emit('select-file', $event)"
+                    @toggle-folder="$emit('toggle-folder', $event)" />
             </div>
         </li>
     </ul>
@@ -28,11 +29,12 @@
 import { Folder, FolderOpen, FileCode } from 'lucide-vue-next';
 
 const props = defineProps(['nodes', 'depth']);
-const emit = defineEmits(['select-file']);
+const emit = defineEmits(['select-file', 'toggle-folder']);
 
-const handleClick = (node) => {
+const handleClick = (node, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     if (node.type === 'folder') {
-        node.expanded = !node.expanded;
+        emit('toggle-folder', node.path);
     } else {
         emit('select-file', node.fileData.id);
     }
