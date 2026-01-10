@@ -188,14 +188,16 @@
     </div>
   </div>
   <SpeedInsights />
+  <Analytics />
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight } from 'lucide-vue-next';
 import FileTree from './components/FileTree.vue';
 import { parsePatch } from './utils/patchParser.js';
 import { SpeedInsights } from "@vercel/speed-insights/vue";
+import { Analytics } from '@vercel/analytics/vue';
 
 const appTitle = import.meta.env.VITE_APP_TITLE;
 const appVersion = import.meta.env.VITE_APP_VERSION;

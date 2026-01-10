@@ -28,4 +28,3 @@ dist-ssr
 .env*.local
 .continue/
 tests/output/*
-!tests/output/.gitkeep

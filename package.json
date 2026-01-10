@@ -7,15 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/run-test.js"
+    "test": "node tests/run-test.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
     "lucide-vue-next": "^0.562.0",
     "vue": "^3.5.24",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.36.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",

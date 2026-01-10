@@ -52,13 +52,11 @@ async function run() {
 
     // Wait for server to be ready
     await waitForPort(PORT, HOST, 20000);
-    console.log('Dev server is ready — running Playwright screenshot');
+    console.log('Dev server is ready — installing Playwright browsers and running tests');
 
-    const outPng = path.join(OUTPUT_DIR, 'mobile-test.png');
-    const cmd = `npx playwright screenshot "${URL}" "${outPng}" --device "iPhone 13" --timeout 30000`;
-
+    // Ensure Playwright browsers are installed
     await new Promise((res, rej) => {
-      exec(cmd, { env: process.env }, (err, stdout, stderr) => {
+      const installer = exec('npx playwright install', { env: process.env }, (err, stdout, stderr) => {
         if (stdout) console.log(stdout);
         if (stderr) console.error(stderr);
         if (err) return rej(err);
@@ -66,9 +64,17 @@ async function run() {
       });
     });
 
-    const result = { url: URL, screenshot: 'mobile-test.png', timestamp: new Date().toISOString() };
-    fs.writeFileSync(path.join(OUTPUT_DIR, 'result.json'), JSON.stringify(result, null, 2));
-    console.log('Test complete. Outputs written to', OUTPUT_DIR);
+    // Run Playwright tests (uses playwright.config.ts)
+    await new Promise((res, rej) => {
+      const runner = exec('npx playwright test --project=chromium', { env: process.env }, (err, stdout, stderr) => {
+        if (stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+        if (err) return rej(err);
+        res();
+      });
+    });
+
+    console.log('Playwright tests complete. Artifacts are in', OUTPUT_DIR);
   } catch (err) {
     console.error('Test failed:', err && err.message ? err.message : err);
     process.exitCode = 1;
