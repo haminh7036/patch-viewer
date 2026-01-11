@@ -36,6 +36,23 @@ const alignSplitChunks = (file) => {
     });
 };
 
+// Logic detect generated/minified files
+const isGeneratedFile = (path) => {
+    const patterns = [
+        /^dist\//,              // Dist directory
+        /^build\//,             // Build directory
+        /^public\/assets\//,    // Built/public assets
+        /^node_modules\//,      // Node modules
+        /\.min\.(js|css)$/,     // File minified
+        /\.map$/,               // Source map
+        /package-lock\.json$/,  // NPM Lock file
+        /yarn\.lock$/,          // Yarn Lock file
+        /pnpm-lock\.yaml$/,     // PNPM Lock file
+        /composer\.lock$/       // Composer Lock file
+    ];
+    return patterns.some(regex => regex.test(path));
+};
+
 export const parsePatch = (text) => {
     const newFiles = [];
     const lines = text.split('\n');
@@ -46,12 +63,19 @@ export const parsePatch = (text) => {
         if (line.startsWith('diff --git')) {
             if (cur) { alignSplitChunks(cur); newFiles.push(cur); }
             const parts = line.split(' ');
-            const path = parts[parts.length - 1];
+            const rawPath = parts[parts.length - 1];
+            // Process path (remove b/ prefix if present)
+            const cleanName = rawPath.startsWith('b/') ? rawPath.substring(2) : rawPath;
+            const generated = isGeneratedFile(cleanName);
+
             cur = {
                 id: id++,
-                name: path.startsWith('b/') ? path.substring(2) : path,
+                name: cleanName,
                 status: 'modified', additions: 0, deletions: 0,
-                chunks: [], splitChunks: [], collapsed: false
+                chunks: [], splitChunks: [], collapsed: false,
+                // Flag to mark generated file
+                isGenerated: generated,
+                showGenerated: false
             };
         } else if (cur) {
             if (line.startsWith('new file')) cur.status = 'added';
