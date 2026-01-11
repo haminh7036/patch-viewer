@@ -123,63 +123,77 @@
             </div>
 
             <div v-if="!file.collapsed" class="overflow-x-auto">
-              <table v-if="viewMode === 'unified'"
-                class="w-full text-left border-collapse code-font min-w-[600px] md:min-w-full">
-                <tbody v-for="(chunk, idx) in file.chunks" :key="idx">
-                  <tr class="bg-blue-50/50 text-blue-500">
-                    <td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
-                      chunk.header }}</td>
-                  </tr>
-                  <tr v-for="line in chunk.lines" :key="line.id" class="hover:bg-gray-50">
-                    <td
-                      class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
-                      {{ line.oldNo }}</td>
-                    <td
-                      class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
-                      {{ line.newNo }}</td>
-                    <td class="px-2 whitespace-pre pr-2 relative pt-0.5 pb-0.5" :style="getLineStyle(line.type)">
-                      <span v-if="line.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
-                      <span v-else-if="line.type === 'del'" class="absolute left-1 text-red-700 select-none">-</span>
-                      <span class="pl-4 block">{{ line.content }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
 
-              <table v-else class="w-full text-left border-collapse code-font table-fixed min-w-[800px]">
-                <colgroup>
-                  <col class="w-[40px]">
-                  <col class="w-[calc(50%-40px)]">
-                  <col class="w-[40px]">
-                  <col class="w-[calc(50%-40px)]">
-                </colgroup>
-                <tbody v-for="(chunk, idx) in file.splitChunks" :key="idx">
-                  <tr class="bg-blue-50/50 text-blue-500">
-                    <td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
-                      chunk.header }}</td>
-                  </tr>
-                  <tr v-for="row in chunk.rows" :key="row.id" class="border-b border-gray-50 group">
-                    <td
-                      class="px-1 text-right text-gray-400 select-none border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
-                      {{ row.left ? row.left.no : '' }}</td>
-                    <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
-                      :class="!row.left ? 'empty-cell' : ''" :style="row.left ? getLineStyle(row.left.type) : {}">
-                      <span v-if="row.left && row.left.type === 'del'"
-                        class="absolute left-1 text-red-700 select-none">-</span>
-                      <span v-if="row.left" class="pl-3 block">{{ row.left.content }}</span>
-                    </td>
-                    <td
-                      class="px-1 text-right text-gray-400 select-none border-l border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
-                      {{ row.right ? row.right.no : '' }}</td>
-                    <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
-                      :class="!row.right ? 'empty-cell' : ''" :style="row.right ? getLineStyle(row.right.type) : {}">
-                      <span v-if="row.right && row.right.type === 'add'"
-                        class="absolute left-1 text-green-700 select-none">+</span>
-                      <span v-if="row.right" class="pl-3 block">{{ row.right.content }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div v-if="file.isGenerated && !file.showGenerated"
+                class="py-10 flex flex-col items-center justify-center bg-gray-50/30">
+                <button @click="file.showGenerated = true"
+                  class="text-blue-600 text-sm font-semibold hover:underline mb-1">
+                  Load Diff
+                </button>
+                <p class="text-xs text-gray-500">
+                  Some generated files are not rendered by default.
+                </p>
+              </div>
+
+              <template v-else>
+                <table v-if="viewMode === 'unified'"
+                  class="w-full text-left border-collapse code-font min-w-[600px] md:min-w-full">
+                  <tbody v-for="(chunk, idx) in file.chunks" :key="idx">
+                    <tr class="bg-blue-50/50 text-blue-500">
+                      <td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
+                        chunk.header }}</td>
+                    </tr>
+                    <tr v-for="line in chunk.lines" :key="line.id" class="hover:bg-gray-50">
+                      <td
+                        class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
+                        {{ line.oldNo }}</td>
+                      <td
+                        class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
+                        {{ line.newNo }}</td>
+                      <td class="px-2 whitespace-pre pr-2 relative pt-0.5 pb-0.5" :style="getLineStyle(line.type)">
+                        <span v-if="line.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
+                        <span v-else-if="line.type === 'del'" class="absolute left-1 text-red-700 select-none">-</span>
+                        <span class="pl-4 block">{{ line.content }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table v-else class="w-full text-left border-collapse code-font table-fixed min-w-[800px]">
+                  <colgroup>
+                    <col class="w-[40px]">
+                    <col class="w-[calc(50%-40px)]">
+                    <col class="w-[40px]">
+                    <col class="w-[calc(50%-40px)]">
+                  </colgroup>
+                  <tbody v-for="(chunk, idx) in file.splitChunks" :key="idx">
+                    <tr class="bg-blue-50/50 text-blue-500">
+                      <td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
+                        chunk.header }}</td>
+                    </tr>
+                    <tr v-for="row in chunk.rows" :key="row.id" class="border-b border-gray-50 group">
+                      <td
+                        class="px-1 text-right text-gray-400 select-none border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
+                        {{ row.left ? row.left.no : '' }}</td>
+                      <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
+                        :class="!row.left ? 'empty-cell' : ''" :style="row.left ? getLineStyle(row.left.type) : {}">
+                        <span v-if="row.left && row.left.type === 'del'"
+                          class="absolute left-1 text-red-700 select-none">-</span>
+                        <span v-if="row.left" class="pl-3 block">{{ row.left.content }}</span>
+                      </td>
+                      <td
+                        class="px-1 text-right text-gray-400 select-none border-l border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
+                        {{ row.right ? row.right.no : '' }}</td>
+                      <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
+                        :class="!row.right ? 'empty-cell' : ''" :style="row.right ? getLineStyle(row.right.type) : {}">
+                        <span v-if="row.right && row.right.type === 'add'"
+                          class="absolute left-1 text-green-700 select-none">+</span>
+                        <span v-if="row.right" class="pl-3 block">{{ row.right.content }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </template>
             </div>
           </div>
 
@@ -187,6 +201,17 @@
         </div>
       </div>
     </div>
+
+    <footer
+      class="bg-white border-t border-gray-200 px-4 py-1.5 flex justify-end items-center text-[11px] text-gray-500 shrink-0 z-30 select-none">
+      <a href="https://github.com/haminh7036/patch-viewer" target="_blank" rel="noopener noreferrer"
+        class="flex items-center gap-1.5 hover:text-gray-900 transition py-0.5">
+        <span>View source on</span>
+        <Github class="w-3.5 h-3.5" />
+        <span class="font-semibold">GitHub</span>
+      </a>
+    </footer>
+
   </div>
   <SpeedInsights />
   <Analytics />
@@ -194,7 +219,7 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue';
-import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight } from 'lucide-vue-next';
+import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight, Github } from 'lucide-vue-next';
 import FileTree from './components/FileTree.vue';
 import { parsePatch } from './utils/patchParser.js';
 import { SpeedInsights } from "@vercel/speed-insights/vue";
