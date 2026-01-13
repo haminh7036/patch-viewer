@@ -11,12 +11,13 @@
         <div class="flex items-center gap-2">
           <GitCompare class="text-blue-400 w-5 h-5 hidden sm:block" />
           <h1 class="font-bold text-base leading-none">{{ appTitle }} <span
-              class="text-[10px] font-normal text-gray-400 bg-gray-800 px-1 py-0.5 rounded">{{ appVersion }}</span></h1>
+              class="text-[10px] font-normal text-gray-400 bg-gray-800 px-1 py-0.5 rounded">{{ appVersion }}</span>
+          </h1>
         </div>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4">
-        <div v-if="isLoading"
+        <div v-if="isLoading && !isNavigating"
           class="flex items-center gap-2 bg-blue-600/30 px-2 py-1 rounded text-[10px] text-blue-200">
           <div class="spinner"></div>
           <span class="hidden sm:inline">{{ loadingText }}</span>
@@ -82,6 +83,17 @@
 
       <div class="flex-1 bg-gray-100 relative overflow-hidden flex flex-col w-full">
 
+        <div v-if="isNavigating"
+          class="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-300">
+          <div class="relative w-12 h-12 mb-4">
+            <div class="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
+            <div
+              class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full animate-spin border-t-transparent">
+            </div>
+          </div>
+          <div class="text-blue-600 font-semibold text-sm animate-pulse">{{ loadingText }}</div>
+        </div>
+
         <div v-if="files.length === 0 && !isLoading"
           class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-slate-50 p-4">
           <div
@@ -94,110 +106,183 @@
           </div>
         </div>
 
-        <div v-else class="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-4 scroll-smooth" id="main-scroll">
+        <div v-else class="flex-1 flex flex-col h-full overflow-hidden">
 
-          <div class="flex justify-end mb-3 sticky top-0 z-10 pointer-events-none">
-            <div
-              class="bg-white/90 backdrop-blur border border-gray-200 p-1 rounded shadow-sm pointer-events-auto flex gap-2">
-              <button @click="toggleAll(false)"
-                class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Collapse All</button>
-              <span class="w-px bg-gray-200"></span>
-              <button @click="toggleAll(true)"
-                class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600">Expand All</button>
-            </div>
-          </div>
+          <div class="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-4 scroll-smooth" id="main-scroll">
 
-          <div v-for="file in visibleFiles" :key="file.id" :id="'file-' + file.id"
-            class="mb-6 bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4 sticky top-0 z-10 pointer-events-none">
+              <div
+                class="bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-xs text-gray-600 font-mono px-3 py-1.5 rounded-full pointer-events-auto">
+                Page <b>{{ currentPage }}</b> of <b>{{ totalPages }}</b>
+              </div>
 
-            <div @click="file.collapsed = !file.collapsed"
-              class="px-3 py-2 border-b border-gray-200 flex justify-between items-center cursor-pointer select-none bg-gray-50 hover:bg-gray-100 transition">
-              <div class="flex items-center gap-2 overflow-hidden w-full">
-                <ChevronRight v-if="file.collapsed" class="w-4 h-4 text-gray-500 shrink-0" />
-                <ChevronDown v-else class="w-4 h-4 text-gray-500 shrink-0" />
-                <span class="font-mono text-xs md:text-sm font-semibold text-gray-700 truncate" :title="file.name">{{
-                  file.name }}</span>
-                <span :class="getStatusBadge(file.status)"
-                  class="text-[9px] font-bold px-1.5 rounded border uppercase shrink-0">{{ file.status }}</span>
+              <div
+                class="bg-white/90 backdrop-blur border border-gray-200 p-1 rounded shadow-sm pointer-events-auto flex gap-2">
+                <button @click="toggleAll(false)"
+                  class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600 transition">Collapse All</button>
+                <span class="w-px bg-gray-200"></span>
+                <button @click="toggleAll(true)"
+                  class="text-[10px] px-2 py-1 hover:bg-gray-100 rounded text-gray-600 transition">Expand All</button>
               </div>
             </div>
 
-            <div v-if="!file.collapsed" class="overflow-x-auto">
+            <div v-for="file in paginatedFiles" :key="file.id" :id="'file-' + file.id"
+              class="mb-6 bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden flex flex-col transition-all duration-300 scroll-mt-20"
+              :class="{
+                'ring-2 ring-blue-500': fileStates[file.id]?.highlighted
+              }">
 
-              <div v-if="file.isGenerated && !file.showGenerated"
-                class="py-10 flex flex-col items-center justify-center bg-gray-50/30">
-                <button @click="file.showGenerated = true"
-                  class="text-blue-600 text-sm font-semibold hover:underline mb-1">
-                  Load Diff
-                </button>
-                <p class="text-xs text-gray-500">
-                  Some generated files are not rendered by default.
+              <div @click="toggleFile(file.id)"
+                class="px-3 py-2 border-b border-gray-200 flex justify-between items-center cursor-pointer select-none bg-gray-50 hover:bg-gray-100 transition">
+                <div class="flex items-center gap-2 overflow-hidden w-full">
+                  <ChevronRight v-if="fileStates[file.id]?.collapsed" class="w-4 h-4 text-gray-500 shrink-0" />
+                  <ChevronDown v-else class="w-4 h-4 text-gray-500 shrink-0" />
+                  <span class="font-mono text-xs md:text-sm font-semibold text-gray-700 truncate" :title="file.name">{{
+                    file.name }}</span>
+                  <span :class="getStatusBadge(file.status)"
+                    class="text-[9px] font-bold px-1.5 rounded border uppercase shrink-0">{{ file.status }}</span>
+                </div>
+              </div>
+
+              <div v-if="!fileStates[file.id]?.collapsed" class="overflow-x-auto">
+                <div v-if="file.isGenerated && !fileStates[file.id]?.showGenerated"
+                  class="py-10 flex flex-col items-center justify-center bg-gray-50/30">
+                  <button @click="forceUpdateFile(file.id)"
+                    class="text-blue-600 text-sm font-semibold hover:underline mb-1">Load Diff</button>
+                  <p class="text-xs text-gray-500">Some generated files are not rendered by default.</p>
+                </div>
+
+                <template v-else>
+                  <table v-if="viewMode === 'unified'"
+                    class="w-full text-left border-collapse code-font min-w-[600px] md:min-w-full">
+                    <tbody v-for="(chunk, idx) in file.chunks" :key="idx">
+                      <tr class="bg-blue-50/50 text-blue-500">
+                        <td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">
+                          {{
+                            chunk.header }}</td>
+                      </tr>
+                      <tr v-for="line in chunk.lines" :key="line.id" class="hover:bg-gray-50">
+                        <td
+                          class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
+                          {{ line.oldNo }}</td>
+                        <td
+                          class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
+                          {{ line.newNo }}</td>
+                        <td class="px-2 whitespace-pre pr-2 relative pt-0.5 pb-0.5" :style="getLineStyle(line.type)">
+                          <span v-if="line.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
+                          <span v-else-if="line.type === 'del'"
+                            class="absolute left-1 text-red-700 select-none">-</span>
+                          <span class="pl-4 block">{{ line.content }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <table v-else class="w-full text-left border-collapse code-font table-fixed min-w-[800px]">
+                    <colgroup>
+                      <col class="w-[40px]">
+                      <col class="w-[calc(50%-40px)]">
+                      <col class="w-[40px]">
+                      <col class="w-[calc(50%-40px)]">
+                    </colgroup>
+                    <tbody v-for="(chunk, idx) in file.splitChunks" :key="idx">
+                      <tr class="bg-blue-50/50 text-blue-500">
+                        <td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">
+                          {{
+                            chunk.header }}</td>
+                      </tr>
+                      <tr v-for="row in chunk.rows" :key="row.id" class="border-b border-gray-50 group">
+                        <td
+                          class="px-1 text-right text-gray-400 select-none border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
+                          {{ row.left ? row.left.no : '' }}</td>
+                        <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
+                          :class="!row.left ? 'empty-cell' : ''" :style="row.left ? getLineStyle(row.left.type) : {}">
+                          <span v-if="row.left && row.left.type === 'del'"
+                            class="absolute left-1 text-red-700 select-none">-</span>
+                          <span v-if="row.left" class="pl-3 block">{{ row.left.content }}</span>
+                        </td>
+                        <td
+                          class="px-1 text-right text-gray-400 select-none border-l border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
+                          {{ row.right ? row.right.no : '' }}</td>
+                        <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
+                          :class="!row.right ? 'empty-cell' : ''"
+                          :style="row.right ? getLineStyle(row.right.type) : {}">
+                          <span v-if="row.right && row.right.type === 'add'"
+                            class="absolute left-1 text-green-700 select-none">+</span>
+                          <span v-if="row.right" class="pl-3 block">{{ row.right.content }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+              </div>
+            </div>
+
+            <div class="h-24"></div>
+          </div>
+
+          <div
+            class="border-t border-gray-200 bg-white px-4 py-2 flex items-center justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0 h-12">
+
+            <div class="flex flex-1 justify-between sm:hidden">
+              <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"
+                class="relative inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm">
+                Previous
+              </button>
+              <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"
+                class="relative ml-3 inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm">
+                Next
+              </button>
+            </div>
+
+            <div class="hidden sm:flex flex-1 items-center justify-between">
+              <div>
+                <p class="text-xs text-gray-700">
+                  <template v-if="visibleFiles.length > 0">
+                    Showing
+                    <span class="font-medium">{{ (currentPage - 1) * ITEMS_PER_PAGE + 1 }}</span>
+                    to
+                    <span class="font-medium">{{ Math.min(currentPage * ITEMS_PER_PAGE, visibleFiles.length) }}</span>
+                    of
+                    <span class="font-medium">{{ visibleFiles.length }}</span>
+                    results
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-500 italic">No results found</span>
+                  </template>
                 </p>
               </div>
+              <div>
+                <nav class="isolate inline-flex -space-x-px rounded shadow-sm" aria-label="Pagination">
+                  <button @click="changePage(currentPage - 1)"
+                    :disabled="currentPage === 1 || visibleFiles.length === 0"
+                    class="relative inline-flex items-center rounded-l px-2 py-1.5 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 transition">
+                    <span class="sr-only">Previous</span>
+                    <ChevronDown class="h-3.5 w-3.5 rotate-90" aria-hidden="true" />
+                  </button>
 
-              <template v-else>
-                <table v-if="viewMode === 'unified'"
-                  class="w-full text-left border-collapse code-font min-w-[600px] md:min-w-full">
-                  <tbody v-for="(chunk, idx) in file.chunks" :key="idx">
-                    <tr class="bg-blue-50/50 text-blue-500">
-                      <td colspan="3" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
-                        chunk.header }}</td>
-                    </tr>
-                    <tr v-for="line in chunk.lines" :key="line.id" class="hover:bg-gray-50">
-                      <td
-                        class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
-                        {{ line.oldNo }}</td>
-                      <td
-                        class="w-8 md:w-12 px-1 text-right text-gray-400 select-none border-r border-gray-100 bg-gray-50/50 text-[10px] pt-1">
-                        {{ line.newNo }}</td>
-                      <td class="px-2 whitespace-pre pr-2 relative pt-0.5 pb-0.5" :style="getLineStyle(line.type)">
-                        <span v-if="line.type === 'add'" class="absolute left-1 text-green-700 select-none">+</span>
-                        <span v-else-if="line.type === 'del'" class="absolute left-1 text-red-700 select-none">-</span>
-                        <span class="pl-4 block">{{ line.content }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                  <div
+                    class="relative inline-flex items-center px-3 py-1.5 text-xs font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:outline-offset-0 bg-white">
+                    Page
+                    <input type="number" :value="currentPage" @change="changePage($event.target.value)"
+                      :disabled="visibleFiles.length === 0"
+                      class="w-8 mx-1.5 text-center border-b border-gray-300 focus:border-blue-500 outline-none p-0 text-xs bg-transparent disabled:opacity-50 transition-colors"
+                      min="1" :max="totalPages">
+                    of {{ totalPages }}
+                  </div>
 
-                <table v-else class="w-full text-left border-collapse code-font table-fixed min-w-[800px]">
-                  <colgroup>
-                    <col class="w-[40px]">
-                    <col class="w-[calc(50%-40px)]">
-                    <col class="w-[40px]">
-                    <col class="w-[calc(50%-40px)]">
-                  </colgroup>
-                  <tbody v-for="(chunk, idx) in file.splitChunks" :key="idx">
-                    <tr class="bg-blue-50/50 text-blue-500">
-                      <td colspan="4" class="px-2 py-1 border-y border-blue-100/50 text-[10px] font-mono select-none">{{
-                        chunk.header }}</td>
-                    </tr>
-                    <tr v-for="row in chunk.rows" :key="row.id" class="border-b border-gray-50 group">
-                      <td
-                        class="px-1 text-right text-gray-400 select-none border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
-                        {{ row.left ? row.left.no : '' }}</td>
-                      <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
-                        :class="!row.left ? 'empty-cell' : ''" :style="row.left ? getLineStyle(row.left.type) : {}">
-                        <span v-if="row.left && row.left.type === 'del'"
-                          class="absolute left-1 text-red-700 select-none">-</span>
-                        <span v-if="row.left" class="pl-3 block">{{ row.left.content }}</span>
-                      </td>
-                      <td
-                        class="px-1 text-right text-gray-400 select-none border-l border-r border-gray-200 bg-gray-50 text-[10px] pt-1">
-                        {{ row.right ? row.right.no : '' }}</td>
-                      <td class="whitespace-pre overflow-hidden relative pt-0.5 pb-0.5"
-                        :class="!row.right ? 'empty-cell' : ''" :style="row.right ? getLineStyle(row.right.type) : {}">
-                        <span v-if="row.right && row.right.type === 'add'"
-                          class="absolute left-1 text-green-700 select-none">+</span>
-                        <span v-if="row.right" class="pl-3 block">{{ row.right.content }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </template>
+                  <button @click="changePage(currentPage + 1)"
+                    :disabled="currentPage === totalPages || visibleFiles.length === 0"
+                    class="relative inline-flex items-center rounded-r px-2 py-1.5 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 transition">
+                    <span class="sr-only">Next</span>
+                    <ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </nav>
+              </div>
             </div>
+
           </div>
 
-          <div class="h-20 flex items-center justify-center text-gray-300 text-xs pb-10">--- End of Diff ---</div>
         </div>
       </div>
     </div>
@@ -213,30 +298,46 @@
     </footer>
 
   </div>
+
   <SpeedInsights />
   <Analytics />
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, shallowRef, reactive, watch } from 'vue';
 import { Menu, GitCompare, AlignJustify, Columns, Upload, Search, FileDiff, ChevronDown, ChevronRight, Github } from 'lucide-vue-next';
 import FileTree from './components/FileTree.vue';
-import { parsePatch } from './utils/patchParser.js';
+import PatchWorker from './workers/patch.worker.js?worker';
 import { SpeedInsights } from "@vercel/speed-insights/vue";
 import { Analytics } from '@vercel/analytics/vue';
+
+// --- CONFIGURATION ---
+const SLEEP_TIME = 300;
+const ITEMS_PER_PAGE = parseInt(import.meta.env.VITE_ITEMS_PER_PAGE || 20);
 
 const appTitle = import.meta.env.VITE_APP_TITLE;
 const appVersion = import.meta.env.VITE_APP_VERSION;
 
 const rawInput = ref('');
-const files = ref([]);
+const files = shallowRef([]); // Data frozen
+const fileStates = reactive({}); // UI State
+
 const searchInput = ref('');
 const searchQuery = ref('');
 const filters = ref(['added', 'modified', 'deleted']);
 const viewMode = ref('unified');
+
 const isLoading = ref(false);
+const isNavigating = ref(false);
 const loadingText = ref('');
 const showSidebar = ref(false);
+
+const expandedPaths = ref({});
+
+// --- PAGINATION ---
+const currentPage = ref(1);
+
+// --- COMPUTED ---
 
 const totalAdditions = computed(() => files.value.reduce((s, f) => s + f.additions, 0));
 const totalDeletions = computed(() => files.value.reduce((s, f) => s + f.deletions, 0));
@@ -246,7 +347,17 @@ const visibleFiles = computed(() => {
   return files.value.filter(f => f.name.toLowerCase().includes(q) && filters.value.includes(f.status));
 });
 
-const expandedPaths = ref({});
+const totalPages = computed(() => Math.ceil(visibleFiles.value.length / ITEMS_PER_PAGE) || 1);
+
+const paginatedFiles = computed(() => {
+  const start = (currentPage.value - 1) * ITEMS_PER_PAGE;
+  const end = start + ITEMS_PER_PAGE;
+  return visibleFiles.value.slice(start, end);
+});
+
+watch([searchQuery, filters], () => {
+  currentPage.value = 1;
+});
 
 const fileTree = computed(() => {
   const root = [];
@@ -277,18 +388,116 @@ const toggleFolder = (path) => {
   expandedPaths.value = { ...expandedPaths.value, [path]: !current };
 };
 
-// Event Handlers
+// --- WORKER ---
+
+const processWithWorker = (content) => {
+  isLoading.value = true;
+  loadingText.value = 'Parsing in background...';
+
+  Object.keys(fileStates).forEach(key => delete fileStates[key]);
+
+  const worker = new PatchWorker();
+
+  worker.onmessage = (e) => {
+    if (e.data.status === 'success') {
+      const rawData = e.data.data;
+
+      rawData.forEach(f => {
+        fileStates[f.id] = { collapsed: false, showGenerated: false, highlighted: false };
+      });
+
+      files.value = Object.freeze(rawData);
+      currentPage.value = 1;
+
+      console.log(`Parsed in ${e.data.time?.toFixed(2)}ms`);
+    } else {
+      console.error(e.data.error);
+      alert('Error parsing patch file');
+    }
+    isLoading.value = false;
+    worker.terminate();
+  };
+
+  worker.onerror = (err) => {
+    console.error(err);
+    isLoading.value = false;
+    worker.terminate();
+  };
+
+  worker.postMessage({ text: content });
+};
+
+// --- NAVIGATION ---
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const changePage = async (page) => {
+  let p = parseInt(page);
+  if (isNaN(p)) p = 1;
+  if (p < 1) p = 1;
+  if (p > totalPages.value) p = totalPages.value;
+
+  isNavigating.value = true;
+  loadingText.value = 'Loading page...';
+
+  await sleep(SLEEP_TIME);
+
+  currentPage.value = p;
+
+  document.getElementById('main-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+  isNavigating.value = false;
+};
+
+const selectFile = async (id) => {
+  showSidebar.value = false;
+
+  const index = visibleFiles.value.findIndex(f => f.id === id);
+  if (index === -1) return;
+
+  const targetPage = Math.floor(index / ITEMS_PER_PAGE) + 1;
+
+  if (targetPage !== currentPage.value) {
+    isNavigating.value = true;
+    loadingText.value = `Jumping to page ${targetPage}...`;
+
+    await sleep(SLEEP_TIME);
+
+    currentPage.value = targetPage;
+    await nextTick();
+    scrollToElement(id);
+    isNavigating.value = false;
+  } else {
+    scrollToElement(id);
+  }
+};
+
+const scrollToElement = (id) => {
+  if (fileStates[id]) fileStates[id].collapsed = false;
+
+  nextTick(() => {
+    const el = document.getElementById('file-' + id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Apply Highlight Logic
+      if (fileStates[id]) {
+        fileStates[id].highlighted = true;
+        setTimeout(() => {
+          if (fileStates[id]) fileStates[id].highlighted = false;
+        }, 2000); // Remove after 2s
+      }
+    }
+  });
+};
+
+// --- EVENTS ---
+
 let timeout;
 const debouncedPaste = () => {
   isLoading.value = true;
   loadingText.value = 'Waiting...';
   clearTimeout(timeout);
   timeout = setTimeout(() => {
-    loadingText.value = 'Parsing...';
-    setTimeout(() => {
-      files.value = parsePatch(rawInput.value);
-      isLoading.value = false;
-    }, 50);
+    processWithWorker(rawInput.value);
   }, 800);
 };
 
@@ -303,12 +512,8 @@ const handleFileUpload = (e) => {
   isLoading.value = true; loadingText.value = 'Reading...';
   const r = new FileReader();
   r.onload = (ev) => {
-    loadingText.value = 'Processing...';
-    setTimeout(() => {
-      rawInput.value = '';
-      files.value = parsePatch(ev.target.result);
-      isLoading.value = false;
-    }, 50);
+    processWithWorker(ev.target.result);
+    rawInput.value = '';
   };
   r.readAsText(f);
 };
@@ -318,29 +523,26 @@ const handleDrop = (e) => {
   if (f) handleFileUpload({ target: { files: [f] } });
 };
 
-const selectFile = (id) => {
-  showSidebar.value = false;
-  nextTick(() => {
-    const el = document.getElementById('file-' + id);
-    const container = document.getElementById('main-scroll');
-    if (el && container) {
-      // Scroll within the inner scroll container so the header stays visible on mobile
-      const top = el.offsetTop - container.offsetTop - 8; // small offset
-      container.scrollTo({ top, behavior: 'smooth' });
-      el.classList.add('ring-2', 'ring-blue-500');
-      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
-    } else if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      el.classList.add('ring-2', 'ring-blue-500');
-      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500'), 1000);
-    }
+const toggleSidebar = () => showSidebar.value = !showSidebar.value;
+
+const toggleFile = (id) => {
+  if (fileStates[id]) {
+    fileStates[id].collapsed = !fileStates[id].collapsed;
+  }
+};
+
+const forceUpdateFile = (id) => {
+  if (fileStates[id]) {
+    fileStates[id].showGenerated = true;
+  }
+}
+
+const toggleAll = (collapse) => {
+  Object.keys(fileStates).forEach(id => {
+    fileStates[id].collapsed = !collapse;
   });
 };
 
-const toggleSidebar = () => showSidebar.value = !showSidebar.value;
-const toggleAll = (v) => files.value.forEach(f => f.collapsed = !v);
-
-// Helpers
 const getStatusBadge = (s) => s === 'added' ? 'bg-green-100 text-green-800 border-green-200' : (s === 'deleted' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-blue-100 text-blue-800 border-blue-200');
 const getFilterClass = (s) => filters.value.includes(s) ? (s === 'added' ? 'bg-green-100 border-green-300 text-green-800' : (s === 'deleted' ? 'bg-red-100 border-red-300 text-red-800' : 'bg-blue-100 border-blue-300 text-blue-800')) : 'bg-white border-gray-200 text-gray-400 grayscale opacity-60';
 const getLineStyle = (type) => {
