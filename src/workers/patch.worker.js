@@ -1,22 +1,29 @@
 import { parsePatch } from '../utils/patchParser.js';
 
 self.onmessage = (e) => {
-    const { text } = e.data;
+    // Support both old and new message format for safety
+    const text = e.data.text || e.data.content;
+
+    if (!text) {
+        self.postMessage({ status: 'error', error: 'No content received' });
+        return;
+    }
+
     try {
-        // Run parsePatch
         const start = performance.now();
         const result = parsePatch(text);
         const time = performance.now() - start;
 
-        // Send result into App.vue
         self.postMessage({
-            status: 'success',
+            status: 'success', // Or 'done'
+            type: 'done',      // Add type for easy handling in App.vue
             data: result,
             time
         });
     } catch (error) {
         self.postMessage({
             status: 'error',
+            type: 'error',
             error: error.message
         });
     }

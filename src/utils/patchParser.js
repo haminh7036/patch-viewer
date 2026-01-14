@@ -36,14 +36,14 @@ const alignSplitChunks = (file) => {
     });
 };
 
-// Logic detect generated/minified files
+// Logic to detect generated/minified files
 const isGeneratedFile = (path) => {
     const patterns = [
         /(^|\/)dist\//,         // Dist directory
         /(^|\/)build\//,        // Build directory
         /(^|\/)node_modules\//, // Node modules
         /^public\/assets\//,    // Built/public assets
-        /\.min\.(js|css)$/,     // File minified
+        /\.min\.(js|css)$/,     // Minified file
         /\.map$/,               // Source map
         /package-lock\.json$/,  // NPM Lock file
         /yarn\.lock$/,          // Yarn Lock file

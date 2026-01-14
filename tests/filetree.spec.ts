@@ -6,7 +6,9 @@ const OUT_DIR = path.resolve(process.cwd(), 'tests/output');
 const APP_URL = 'http://127.0.0.1:5173/';
 
 test.beforeAll(() => {
-  fs.mkdirSync(OUT_DIR, { recursive: true });
+  if (!fs.existsSync(OUT_DIR)) {
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+  }
 });
 
 test.describe('FileTree - expand / collapse', () => {
@@ -14,32 +16,45 @@ test.describe('FileTree - expand / collapse', () => {
     await page.goto(APP_URL);
     await page.waitForLoadState('networkidle');
 
+    // Upload sample patch file
     const sample = path.resolve(process.cwd(), 'sample.patch');
     if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
     await page.setInputFiles('input[type="file"]', sample);
 
-    // open sidebar if hidden (mobile)
+    // Open sidebar if in mobile mode (or small screen)
     const menuBtn = page.locator('header button').first();
-    if (await menuBtn.isVisible()) await menuBtn.click();
+    if (await menuBtn.isVisible()) {
+      await menuBtn.click();
+      await page.waitForTimeout(300);
+    }
 
-    const sidebar = page.locator('div.flex-1.overflow-y-auto');
+    // Get the container holding the file list in Sidebar
+    const sidebar = page.locator('.flex-1.overflow-y-auto').first();
 
-    // wait for a known folder from sample.patch to appear
-    const folder = sidebar.getByText('src', { exact: false }).first();
+    // Find 'src' folder
+    const folder = sidebar.getByText('src', { exact: true }).first();
     await folder.waitFor({ state: 'visible', timeout: 5000 });
 
-    // find parent <li> for the folder and check if children are present after click
-    const folderItem = folder.locator('xpath=ancestor::li[1]');
+    // Find the li element containing this folder to determine the children area
+    // DOM structure: li > div (folder row) + div (children container) > ul
+    const folderLi = folder.locator('xpath=ancestor::li[1]');
 
-    // ensure initially children are visible (default expanded) then collapse
-    const childTree = folderItem.locator('ul');
+    // Use .first() to get only the nearest ul, avoid mistakenly selecting ul from nested folders (e.g., src/utils)
+    const childTree = folderLi.locator('ul').first();
 
-    // click to toggle collapse
-    await folder.evaluate(el => (el as HTMLElement).click());
-    await expect(childTree).toHaveCount(0);
+    // Verify: Folder is open by default - children must be visible
+    await expect(childTree).toBeVisible();
 
-    // click again to expand
-    await folder.evaluate(el => (el as HTMLElement).click());
-    await expect(childTree).not.toHaveCount(0);
+    // Click folder to collapse
+    await folder.click();
+
+    // Verify: Children are hidden (v-show only sets display: none)
+    await expect(childTree).toBeHidden();
+
+    // Click again to expand
+    await folder.click();
+
+    // Verify: Children are visible again
+    await expect(childTree).toBeVisible();
   });
 });

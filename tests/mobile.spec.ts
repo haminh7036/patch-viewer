@@ -8,7 +8,9 @@ const OUT_DIR = path.resolve(process.cwd(), 'tests/output');
 
 test.describe('Mobile - header visibility after selecting file', () => {
   test.beforeAll(() => {
-    fs.mkdirSync(OUT_DIR, { recursive: true });
+    if (!fs.existsSync(OUT_DIR)) {
+      fs.mkdirSync(OUT_DIR, { recursive: true });
+    }
   });
 
   test('upload sample.patch and select file keeps header visible', async ({ page }) => {
@@ -17,7 +19,6 @@ test.describe('Mobile - header visibility after selecting file', () => {
     await test.step('open app on mobile', async () => {
       await page.goto(APP_URL);
       await page.waitForLoadState('networkidle');
-      await page.screenshot({ path: path.join(OUT_DIR, 'step-1-open.png') });
       await expect(page.locator('header')).toBeVisible();
     });
 
@@ -25,26 +26,29 @@ test.describe('Mobile - header visibility after selecting file', () => {
       const sample = path.resolve(process.cwd(), 'sample.patch');
       if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
       await page.setInputFiles('input[type="file"]', sample);
-      // wait for file list to be populated
+      // Wait for file list to be rendered
       await page.waitForTimeout(500);
-      await page.screenshot({ path: path.join(OUT_DIR, 'step-2-upload.png') });
     });
 
     await test.step('open menu and select a file from file tree', async () => {
-      // open mobile sidebar via header menu button
+      // Open sidebar on mobile (menu button in header)
       await page.locator('header button').first().click();
-      await page.screenshot({ path: path.join(OUT_DIR, 'step-3-sidebar-open.png') });
+      await page.waitForTimeout(300); // Wait for sidebar animation
 
-      // select a file entry present in sample.patch (e.g., src/App.js)
-      // find file entry inside the sidebar file list to avoid ambiguous matches
-      const sidebar = page.locator('div.flex-1.overflow-y-auto');
-      const fileEntry = sidebar.getByText('src/App.js', { exact: false }).first();
-      await fileEntry.waitFor({ state: 'visible', timeout: 10000 });
-      // use DOM click to avoid overlay/pointer interception in some layouts
-      await fileEntry.evaluate(el => (el as HTMLElement).click());
-      await page.screenshot({ path: path.join(OUT_DIR, 'step-4-file-selected.png') });
+      // Identify sidebar: Sidebar appears before Main Content in DOM, so use .first()
+      const sidebar = page.locator('.flex-1.overflow-y-auto').first();
 
-      // header should remain visible
+      // Select 'App.js' file (Note: FileTree displays as a tree structure, so find file name, not full path 'src/App.js')
+      const fileEntry = sidebar.getByText('App.js', { exact: true }).first();
+      await fileEntry.waitFor({ state: 'visible', timeout: 5000 });
+
+      // Click on file
+      await fileEntry.click();
+
+      // Sidebar will automatically close on mobile, wait for animation
+      await page.waitForTimeout(300);
+
+      // Header must still be visible
       await expect(page.locator('header')).toBeVisible();
     });
   });
