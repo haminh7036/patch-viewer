@@ -22,7 +22,16 @@
         </div>
 
         <div v-if="!isCollapsed" class="overflow-x-auto">
-            <div v-if="file.isGenerated && !showGenerated"
+            <!-- Large file diff (> 400 lines) hidden by default -->
+            <div v-if="file.isLargeFile && !showLargeDiff"
+                class="py-10 flex flex-col items-center justify-center bg-amber-50/30">
+                <button @click="showLargeDiff = true"
+                    class="text-amber-600 text-sm font-semibold hover:underline mb-1">Load Diff</button>
+                <p class="text-xs text-gray-500">Large diff not rendered by default ({{ file.totalLines }} lines).</p>
+            </div>
+
+            <!-- Generated file diff hidden by default -->
+            <div v-else-if="file.isGenerated && !showGenerated"
                 class="py-10 flex flex-col items-center justify-center bg-gray-50/30">
                 <button @click="showGenerated = true"
                     class="text-blue-600 text-sm font-semibold hover:underline mb-1">Load Diff</button>
@@ -111,6 +120,7 @@ const props = defineProps(['file', 'viewMode', 'forceCollapse']);
 // Local state for component
 const isCollapsed = ref(false);
 const showGenerated = ref(false);
+const showLargeDiff = ref(false);  // For large diffs (> 400 lines)
 const isHighlighted = ref(false);
 
 // Watch forceCollapse from parent (to implement Expand/Collapse All button)

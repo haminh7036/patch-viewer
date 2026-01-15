@@ -1,4 +1,20 @@
+// Thresholds for large diff detection (inspired by GitHub's approach)
+const LARGE_FILE_THRESHOLD = 400;  // Total lines in file
+const LARGE_CHUNK_THRESHOLD = 200; // Lines per chunk
+
 const alignSplitChunks = (file) => {
+    // Calculate total lines and mark large chunks
+    let totalLines = 0;
+
+    file.chunks.forEach(chunk => {
+        const chunkLineCount = chunk.lines.length;
+        totalLines += chunkLineCount;
+        chunk.isLargeChunk = chunkLineCount > LARGE_CHUNK_THRESHOLD;
+    });
+
+    file.totalLines = totalLines;
+    file.isLargeFile = totalLines > LARGE_FILE_THRESHOLD;
+
     file.splitChunks = file.chunks.map(chunk => {
         const rows = [];
         let delBuffer = [];
