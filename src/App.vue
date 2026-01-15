@@ -8,7 +8,7 @@
 
     <div class="flex-1 flex overflow-hidden relative">
       <TheSidebar :is-open="showSidebar" v-model:filters="filters" v-model:search-query="searchInput"
-        :file-tree="fileTree" :is-empty="files.length === 0" :visible-count="visibleFiles.length"
+        :file-tree="fileTree" :is-empty="visibleFiles.length === 0" :visible-count="visibleFiles.length"
         :additions="totalAdditions" :deletions="totalDeletions" @close="showSidebar = false" @select-file="selectFile"
         @toggle-folder="toggleFolder" />
 

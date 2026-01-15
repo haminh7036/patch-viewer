@@ -2,14 +2,8 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-const OUT_DIR = path.resolve(process.cwd(), 'tests/output');
 const APP_URL = 'http://127.0.0.1:5173/';
 
-test.beforeAll(() => {
-  if (!fs.existsSync(OUT_DIR)) {
-    fs.mkdirSync(OUT_DIR, { recursive: true });
-  }
-});
 
 test.describe('FileTree - expand / collapse', () => {
   test('clicking folder toggles children visibility', async ({ page }) => {

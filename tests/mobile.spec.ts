@@ -4,15 +4,8 @@ import fs from 'fs';
 
 test.use({ ...devices['iPhone 13'] });
 
-const OUT_DIR = path.resolve(process.cwd(), 'tests/output');
 
 test.describe('Mobile - header visibility after selecting file', () => {
-  test.beforeAll(() => {
-    if (!fs.existsSync(OUT_DIR)) {
-      fs.mkdirSync(OUT_DIR, { recursive: true });
-    }
-  });
-
   test('upload sample.patch and select file keeps header visible', async ({ page }) => {
     const APP_URL = 'http://127.0.0.1:5173/';
 
