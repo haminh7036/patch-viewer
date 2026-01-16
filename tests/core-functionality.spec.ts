@@ -13,7 +13,7 @@ test.describe('Core Functionality - File Upload and Parsing', () => {
 
     test('should upload patch file via file input and display files', async ({ page }) => {
         await test.step('Upload sample patch file', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
 
             await page.setInputFiles('input[type="file"]', sample);
@@ -46,7 +46,7 @@ test.describe('Core Functionality - File Upload and Parsing', () => {
 
     test('should display loading state during parsing', async ({ page }) => {
         await test.step('Verify loading indicator appears', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
 
             // Start upload
             const uploadPromise = page.setInputFiles('input[type="file"]', sample);
@@ -62,7 +62,7 @@ test.describe('Core Functionality - File Upload and Parsing', () => {
 
     test('should show file tree in sidebar', async ({ page }) => {
         await test.step('Upload file and open sidebar', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             await page.setInputFiles('input[type="file"]', sample);
             await page.waitForTimeout(500);
 

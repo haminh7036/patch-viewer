@@ -92,7 +92,7 @@ index 1234567..abcdefg 100644
         });
 
         await test.step('Upload file', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
 
             await page.setInputFiles('input[type="file"]', sample);

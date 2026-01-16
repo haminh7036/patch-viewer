@@ -12,7 +12,7 @@ test.describe('Large Diff Handling', () => {
 
     test('should hide large diff file by default and show message', async ({ page }) => {
         // Upload the large patch file (> 400 lines)
-        const testPatch = path.resolve(process.cwd(), 'sample-largediff.patch');
+        const testPatch = path.resolve(process.cwd(), 'tests/fixtures/sample-largediff.patch');
         if (!fs.existsSync(testPatch)) {
             test.skip();
             return;
@@ -40,7 +40,7 @@ test.describe('Large Diff Handling', () => {
     });
 
     test('should show diff content when Load Diff is clicked', async ({ page }) => {
-        const testPatch = path.resolve(process.cwd(), 'sample-largediff.patch');
+        const testPatch = path.resolve(process.cwd(), 'tests/fixtures/sample-largediff.patch');
         if (!fs.existsSync(testPatch)) {
             test.skip();
             return;
@@ -68,7 +68,7 @@ test.describe('Large Diff Handling', () => {
 
     test('should not hide small diff files', async ({ page }) => {
         // Use regular sample.patch which is small
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) {
             test.skip();
             return;

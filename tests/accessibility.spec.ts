@@ -33,7 +33,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
 
     test('should support keyboard navigation in pagination', async ({ page }) => {
         // Upload file first
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
         await page.setInputFiles('input[type="file"]', sample);
         await page.waitForTimeout(500);
@@ -54,7 +54,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
 
     test('should have proper ARIA labels on buttons', async ({ page }) => {
         // Upload file first
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
         await page.setInputFiles('input[type="file"]', sample);
         await page.waitForTimeout(500);
@@ -84,7 +84,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
         });
 
         await test.step('Verify main element exists after upload', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
             await page.setInputFiles('input[type="file"]', sample);
             await page.waitForTimeout(500);
@@ -94,7 +94,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
         });
 
         await test.step('Verify footer element may exist', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
             await page.setInputFiles('input[type="file"]', sample);
             await page.waitForTimeout(500);
@@ -118,7 +118,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
     });
 
     test('should support screen reader navigation', async ({ page }) => {
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
         await page.setInputFiles('input[type="file"]', sample);
         await page.waitForTimeout(500);
@@ -133,7 +133,7 @@ test.describe('Accessibility and Keyboard Navigation', () => {
     });
 
     test('should have focusable interactive elements', async ({ page }) => {
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
         await page.setInputFiles('input[type="file"]', sample);
         await page.waitForTimeout(500);

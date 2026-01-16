@@ -16,7 +16,7 @@ test.describe('Mobile - header visibility after selecting file', () => {
     });
 
     await test.step('upload sample.patch via file input', async () => {
-      const sample = path.resolve(process.cwd(), 'sample.patch');
+      const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
       if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
       await page.setInputFiles('input[type="file"]', sample);
       // Wait for file list to be rendered

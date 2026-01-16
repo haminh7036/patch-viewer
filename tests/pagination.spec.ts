@@ -11,10 +11,10 @@ test.describe('Pagination Functionality', () => {
         await page.waitForLoadState('networkidle');
 
         // Upload large sample patch for pagination testing
-        const sample = path.resolve(process.cwd(), 'sample-large.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample-large.patch');
         if (!fs.existsSync(sample)) {
             console.warn('sample-large.patch not found, using sample.patch');
-            const fallback = path.resolve(process.cwd(), 'sample.patch');
+            const fallback = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             await page.setInputFiles('input[type="file"]', fallback);
         } else {
             await page.setInputFiles('input[type="file"]', sample);

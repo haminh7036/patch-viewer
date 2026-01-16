@@ -11,7 +11,7 @@ test.describe('View Modes - Unified and Split Views', () => {
         await page.waitForLoadState('networkidle');
 
         // Upload sample patch
-        const sample = path.resolve(process.cwd(), 'sample.patch');
+        const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
         if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
         await page.setInputFiles('input[type="file"]', sample);
         await page.waitForTimeout(500);

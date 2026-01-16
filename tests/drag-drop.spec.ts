@@ -18,7 +18,7 @@ test.describe('Drag and Drop File Upload', () => {
         });
 
         await test.step('Simulate drag and drop', async () => {
-            const sample = path.resolve(process.cwd(), 'sample.patch');
+            const sample = path.resolve(process.cwd(), 'tests/fixtures/sample.patch');
             if (!fs.existsSync(sample)) throw new Error('sample.patch not found');
 
             // Read file content
